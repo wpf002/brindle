@@ -6,6 +6,7 @@ import { PrismaLotStateStore } from "./sequencer/prismaStore.js";
 import { health } from "./routes/health.js";
 import { authRoutes } from "./routes/auth.js";
 import { mediaRoutes } from "./routes/media.js";
+import { geneticsRoutes } from "./routes/genetics.js";
 import { bidsRoutes } from "./routes/bids.js";
 
 declare module "fastify" {
@@ -28,6 +29,7 @@ await app.register(authPlugin);
 await app.register(health);
 await app.register(authRoutes);
 await app.register(mediaRoutes);
+await app.register(geneticsRoutes);
 await app.register(bidsRoutes);
 
 const port = Number(process.env.PORT ?? 3001);

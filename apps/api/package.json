@@ -20,6 +20,7 @@
     "@brindle/db": "workspace:*",
     "@brindle/core": "workspace:*",
     "@brindle/auction": "workspace:*",
+    "@brindle/genetics": "workspace:*",
     "@brindle/settlement": "workspace:*"
   },
   "devDependencies": { "tsx": "^4.16.0", "typescript": "^5.5.0" }
