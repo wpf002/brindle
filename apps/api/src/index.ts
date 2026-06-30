@@ -7,6 +7,7 @@ import { health } from "./routes/health.js";
 import { authRoutes } from "./routes/auth.js";
 import { mediaRoutes } from "./routes/media.js";
 import { geneticsRoutes } from "./routes/genetics.js";
+import { settlementRoutes } from "./routes/settlement.js";
 import { bidsRoutes } from "./routes/bids.js";
 
 declare module "fastify" {
@@ -30,6 +31,7 @@ await app.register(health);
 await app.register(authRoutes);
 await app.register(mediaRoutes);
 await app.register(geneticsRoutes);
+await app.register(settlementRoutes);
 await app.register(bidsRoutes);
 
 const port = Number(process.env.PORT ?? 3001);
