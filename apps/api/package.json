@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "fastify": "^4.28.0",
@@ -24,5 +25,5 @@
     "@brindle/genetics": "workspace:*",
     "@brindle/settlement": "workspace:*"
   },
-  "devDependencies": { "tsx": "^4.16.0", "typescript": "^5.5.0" }
+  "devDependencies": { "tsx": "^4.16.0", "typescript": "^5.5.0", "vitest": "^2.0.0" }
 }
