@@ -178,6 +178,7 @@ model Lot {
   // ── pricing ──
   priceUnit        PriceUnit
   startingBidCents BigInt
+  bidIncrementCents BigInt     @default(100) // min raise, in priceUnit cents; required by the sequencer
   reserveCents     BigInt?     // hidden floor
   status           LotStatus   @default(DRAFT)
   photos           String[]
@@ -204,10 +205,13 @@ model Bid {
   kind          BidKind   @default(MANUAL)
   proxyMaxCents BigInt?
   seq           BigInt    // monotonic per lot, assigned by the sequencer
+  streamId      String?   // the ingest-stream entry this bid was sequenced from
   status        BidStatus @default(ACTIVE)
   ip            String?
   createdAt     DateTime  @default(now())
 
+  @@unique([lotId, seq])      // append-only invariant: one bid per (lot, sequence)
+  @@unique([lotId, streamId]) // idempotent reprocessing: a stream entry persists at most once
   @@index([lotId, seq])
 }
 
