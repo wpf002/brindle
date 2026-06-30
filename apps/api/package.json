@@ -6,12 +6,17 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "lint": "eslint src",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "fastify": "^4.28.0",
+    "fastify-plugin": "^4.5.1",
     "@fastify/websocket": "^10.0.1",
+    "jose": "^5.6.3",
     "ioredis": "^5.4.1",
+    "@aws-sdk/client-s3": "^3.620.0",
+    "@aws-sdk/s3-request-presigner": "^3.620.0",
     "@brindle/db": "workspace:*",
     "@brindle/core": "workspace:*",
     "@brindle/auction": "workspace:*",

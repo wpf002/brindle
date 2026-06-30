@@ -9,16 +9,25 @@ import { resolveBid, type LotState } from "@brindle/auction";
  * below shows the resolve step inline for scaffolding clarity.
  */
 export async function bidsRoutes(app: FastifyInstance) {
-  app.get("/auctions/:auctionId/ws", { websocket: true }, (socket /*, req */) => {
+  app.get("/auctions/:auctionId/ws", { websocket: true }, (socket, req) => {
+    // Authenticated bidders only — the session is populated by authPlugin from
+    // the `?token=` query param on the upgrade request.
+    if (!req.session) {
+      socket.send(JSON.stringify({ ok: false, reason: "UNAUTHENTICATED" }));
+      socket.close();
+      return;
+    }
+
     socket.on("message", (raw: Buffer) => {
-      // TODO Phase 2: push to Redis stream; sequencer worker calls resolveBid.
-      // Inline demo so the scaffold is runnable end-to-end:
+      // TODO Phase 1: push to Redis stream auction:{id}:bids; the single
+      // sequencer consumer calls resolveBid and persists+broadcasts.
+      // Inline resolve so the scaffold is runnable end-to-end until then.
       try {
         const msg = JSON.parse(raw.toString());
         const state: LotState = msg.state;
         const result = resolveBid(state, { ...msg.bid, receivedAt: Date.now() });
         socket.send(JSON.stringify(result));
-      } catch (e) {
+      } catch {
         socket.send(JSON.stringify({ ok: false, reason: "BAD_MESSAGE" }));
       }
     });

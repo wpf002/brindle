@@ -1,0 +1,35 @@
+# Local dev dependencies for Brindle: Postgres (durable state) and Redis
+# (live auction state + the per-room bid stream the sequencer consumes).
+# Mirrors the Railway managed plugins so local and prod match.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: brindle
+    ports:
+      - "5432:5432"
+    volumes:
+      - brindle_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - brindle_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  brindle_pg:
+  brindle_redis:
