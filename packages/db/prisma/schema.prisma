@@ -1,0 +1,246 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────────────────────
+enum UserType {
+  RANCHER
+  FEEDLOT
+  ORDER_BUYER
+  SELLER_BREEDER
+  GENETICS_PROVIDER
+  SALE_MANAGER
+  BUYER
+}
+
+enum CreditStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+enum AuctionFormat {
+  LIVE_RING
+  TIMED_ONLINE
+}
+
+enum SettlementMode {
+  CONTRACT
+  INTEGRATED_PAYMENT
+}
+
+enum AuctionStatus {
+  SCHEDULED
+  LIVE
+  CLOSED
+  CANCELLED
+}
+
+enum LotCategory {
+  STEERS
+  HEIFERS
+  COWS
+  BULLS
+  PAIRS
+  BRED_HEIFERS
+  CALVES
+  SEMEN
+  EMBRYO
+}
+
+enum PriceUnit {
+  CWT
+  HEAD
+  DOSE
+  EMBRYO
+}
+
+enum LotStatus {
+  DRAFT
+  ACTIVE
+  SOLD
+  PASSED
+  WITHDRAWN
+}
+
+enum BidKind {
+  MANUAL
+  PROXY
+  FLOOR
+  PHONE
+}
+
+enum BidStatus {
+  ACTIVE
+  OUTBID
+  WINNING
+  RETRACTED
+  INVALID
+}
+
+enum ContractStatus {
+  DRAFT
+  SIGNED
+  DELIVERED
+  SETTLED
+  VOID
+}
+
+enum PaymentStatus {
+  PENDING
+  HELD
+  CAPTURED
+  REFUNDED
+  DISPUTED
+}
+
+// ──────────────────────────────────────────────────────────────
+// Models
+// ──────────────────────────────────────────────────────────────
+model User {
+  id               String       @id @default(uuid())
+  type             UserType
+  legalName        String
+  businessName     String?
+  email            String       @unique
+  phone            String?
+  state            String?
+  // buyer credit gate — issued once, used across all sales
+  buyerNumber      String?      @unique
+  creditStatus     CreditStatus @default(PENDING)
+  creditLimitCents BigInt?
+  stripeAccountId  String?
+  idVerifiedAt     DateTime?
+  createdAt        DateTime     @default(now())
+
+  auctions         Auction[]    @relation("SellerAuctions")
+  bids             Bid[]
+}
+
+model Auction {
+  id              String         @id @default(uuid())
+  sellerId        String
+  seller          User           @relation("SellerAuctions", fields: [sellerId], references: [id])
+  name            String
+  format          AuctionFormat
+  settlementMode  SettlementMode
+  startsAt        DateTime
+  endsAt          DateTime?
+  streamUrl       String?
+  status          AuctionStatus  @default(SCHEDULED)
+  buyerPremiumBps Int            @default(0) // basis points (integer)
+  softCloseSecs   Int            @default(120)
+  termsText       String?
+  createdAt       DateTime       @default(now())
+
+  lots            Lot[]
+
+  @@index([status, startsAt])
+}
+
+model Lot {
+  id               String      @id @default(uuid())
+  auctionId        String
+  auction          Auction     @relation(fields: [auctionId], references: [id])
+  lotNumber        Int
+  category         LotCategory
+
+  // ── live-animal fields ──
+  headCount        Int?
+  primaryBreed     String?
+  breedComposition Json?       // {"angus":75,"hereford":25}
+  avgWeightLbs     Decimal?    @db.Decimal(8, 2)
+  baseWeightLbs    Decimal?    @db.Decimal(8, 2)
+  shrinkPct        Decimal?    @db.Decimal(5, 2)
+  slideCents       Int?        // cents/cwt slide adjustment
+  bodyCondition    Decimal?    @db.Decimal(3, 1)
+  pregStatus       String?
+  programCerts     String[]
+  originState      String?
+  eidTags          String[]
+
+  // ── genetics fields ──
+  bullName         String?
+  bullRegId        String?
+  epd              Json?       // {trait:{value,acc,pct}}
+  dosesAvailable   Int?
+  postThawMotility Decimal?    @db.Decimal(5, 2)
+  storageFacility  String?
+  diseaseTests     Json?       // BVD, Trich, Brucellosis, IBR + expiry
+
+  // ── pricing ──
+  priceUnit        PriceUnit
+  startingBidCents BigInt
+  reserveCents     BigInt?     // hidden floor
+  status           LotStatus   @default(DRAFT)
+  photos           String[]
+  videoUrl         String?
+
+  endsAt           DateTime?   // per-lot close (timed sales, soft-close target)
+  createdAt        DateTime    @default(now())
+
+  bids             Bid[]
+  contract         Contract?
+  payment          Payment?
+
+  @@unique([auctionId, lotNumber])
+}
+
+model Bid {
+  id            String    @id @default(uuid())
+  lotId         String
+  lot           Lot       @relation(fields: [lotId], references: [id])
+  bidderId      String
+  bidder        User      @relation(fields: [bidderId], references: [id])
+  amountCents   BigInt    // in priceUnit terms
+  priceUnit     PriceUnit
+  kind          BidKind   @default(MANUAL)
+  proxyMaxCents BigInt?
+  seq           BigInt    // monotonic per lot, assigned by the sequencer
+  status        BidStatus @default(ACTIVE)
+  ip            String?
+  createdAt     DateTime  @default(now())
+
+  @@index([lotId, seq])
+}
+
+// CONTRACT settlement mode (load lots / breeding stock)
+model Contract {
+  id                String         @id @default(uuid())
+  lotId             String         @unique
+  lot               Lot            @relation(fields: [lotId], references: [id])
+  buyerId           String
+  sellerId          String
+  hammerCents       BigInt
+  buyerPremiumCents BigInt
+  platformFeeCents  BigInt
+  baseWeightLbs     Decimal        @db.Decimal(8, 2)
+  slideCents        Int
+  shrinkPct         Decimal        @db.Decimal(5, 2)
+  deliveryWindow    Json           // {start, end}
+  status            ContractStatus @default(DRAFT)
+  signedAt          DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime       @default(now())
+}
+
+// INTEGRATED_PAYMENT settlement mode (genetics / small lots)
+model Payment {
+  id               String        @id @default(uuid())
+  lotId            String        @unique
+  lot              Lot           @relation(fields: [lotId], references: [id])
+  buyerId          String
+  sellerId         String
+  amountCents      BigInt
+  platformFeeCents BigInt
+  stripePaymentId  String?
+  status           PaymentStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+}

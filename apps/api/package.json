@@ -1,0 +1,21 @@
+{
+  "name": "@brindle/api",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^4.28.0",
+    "@fastify/websocket": "^10.0.1",
+    "ioredis": "^5.4.1",
+    "@brindle/db": "workspace:*",
+    "@brindle/core": "workspace:*",
+    "@brindle/auction": "workspace:*",
+    "@brindle/settlement": "workspace:*"
+  },
+  "devDependencies": { "tsx": "^4.16.0", "typescript": "^5.5.0" }
+}
