@@ -1,5 +1,13 @@
 export * from "./types.js";
 export { resolveBid, reserveMet } from "./sequencer.js";
+export {
+  resolveRingAction,
+  type RingLotState,
+  type RingAction,
+  type RingResult,
+  type RingReject,
+  type RingBidKind,
+} from "./ring.js";
 export { type BidStream, type StreamEntry, InMemoryBidStream } from "./stream.js";
 export {
   type LotStateStore,

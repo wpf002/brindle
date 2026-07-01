@@ -11,6 +11,12 @@ export {
   type PaymentRecord,
 } from "./integratedPayment.js";
 export { StripePaymentGateway } from "./stripeGateway.js";
+export {
+  estimateContract,
+  settleContractAtDelivery,
+  type ForwardContractTerms,
+  type ContractSettlement,
+} from "./contract.js";
 
 import type { FeeBreakdown } from "./fees.js";
 
