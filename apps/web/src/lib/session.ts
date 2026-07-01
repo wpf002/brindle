@@ -63,6 +63,25 @@ export async function authed<T>(path: string, init: RequestInit = {}): Promise<T
   return r.json();
 }
 
+const ERROR_TEXT: Record<string, string> = {
+  NAME_AND_START_REQUIRED: "Give the auction a name and a start time.",
+  MISSING_REQUIRED_LOT_FIELDS: "Fill in the lot number, category, price unit, and opening bid.",
+  NOT_AUCTION_SELLER: "That auction belongs to a different seller account.",
+  AUCTION_NOT_FOUND: "That auction doesn't exist anymore — refresh and try again.",
+  NAME_LOCATION_DESCRIPTION_REQUIRED: "Give the operation a name, location, and short description.",
+  OPERATION_NOT_FOUND: "That operation was already removed.",
+  NOT_YOUR_OPERATION: "That operation belongs to a different seller account.",
+  LOT_NOT_FOUND: "That lot doesn't exist anymore — refresh and try again.",
+  NOT_LOT_SELLER: "That lot belongs to a different seller account.",
+  SELLER_NOT_FOUND: "We couldn't find that seller.",
+};
+
+/** Turn a thrown error (often a raw API error code) into copy a seller can act on. */
+export function humanizeError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  return ERROR_TEXT[raw] ?? "Something went wrong — please try again.";
+}
+
 export function openSignIn(): void {
   document.querySelector<HTMLButtonElement>(".nav-user .btn-primary")?.click();
 }

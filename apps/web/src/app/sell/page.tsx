@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { authed, getToken, onAuthChange, openSignIn } from "../../lib/session";
+import { authed, getToken, onAuthChange, openSignIn, humanizeError } from "../../lib/session";
 import { formatCents } from "../../lib/format";
 
 interface AuctionRow {
@@ -55,7 +55,7 @@ export default function Sell() {
       setBio(prof.profile.bio ?? "");
       setQuote(prof.profile.quote ?? "");
       setFounded(prof.profile.foundedYear ? String(prof.profile.foundedYear) : "");
-    } catch (e) { setMsg(String(e)); }
+    } catch (e) { setMsg(humanizeError(e)); }
   }
 
   // --- profile / story ---
@@ -70,7 +70,7 @@ export default function Sell() {
         foundedYear: founded ? Number(founded) : undefined,
       }) });
       setMsg("Profile saved — visible on your public seller page");
-    } catch (e) { setMsg(String(e)); }
+    } catch (e) { setMsg(humanizeError(e)); }
   }
 
   // --- operations ---
@@ -87,11 +87,11 @@ export default function Sell() {
       }) });
       setOpName(""); setOpLoc(""); setOpDesc(""); setOpAcres(""); setOpHerd("");
       setMsg("Operation added"); await refresh();
-    } catch (e) { setMsg(String(e)); }
+    } catch (e) { setMsg(humanizeError(e)); }
   }
   async function removeOperation(id: string) {
     try { await authed(`/console/operations/${id}`, { method: "DELETE" }); await refresh(); }
-    catch (e) { setMsg(String(e)); }
+    catch (e) { setMsg(humanizeError(e)); }
   }
 
   // --- auctions / lots ---
@@ -105,7 +105,7 @@ export default function Sell() {
         buyerPremiumBps: Math.round(Number(premium) * 100),
       }) });
       setAName(""); setMsg("Auction created"); await refresh();
-    } catch (e) { setMsg(String(e)); }
+    } catch (e) { setMsg(humanizeError(e)); }
   }
 
   const [lotAuction, setLotAuction] = useState("");
@@ -117,7 +117,7 @@ export default function Sell() {
   const [epdText, setEpdText] = useState('{ "CED": 8, "BW": {"value": 1.2, "pct": 15}, "WW": 70, "Marb": {"value": 0.8, "pct": 4} }');
   async function addLot() {
     let epd: unknown;
-    try { epd = epdText.trim() ? JSON.parse(epdText) : undefined; } catch { setMsg("EPD JSON is invalid"); return; }
+    try { epd = epdText.trim() ? JSON.parse(epdText) : undefined; } catch { setMsg("Couldn't read those EPD values — check the format and try again."); return; }
     try {
       const res = await authed<{ epdWarnings: string[] }>(`/console/auctions/${lotAuction}/lots`, {
         method: "POST", body: JSON.stringify({
@@ -128,12 +128,12 @@ export default function Sell() {
       });
       setMsg(`Lot created${res.epdWarnings.length ? ` · EPD warnings: ${res.epdWarnings.join("; ")}` : ""}`);
       await refresh();
-    } catch (e) { setMsg(String(e)); }
+    } catch (e) { setMsg(humanizeError(e)); }
   }
 
   async function activate(lotId: string) {
     try { await authed(`/console/lots/${lotId}/status`, { method: "POST", body: JSON.stringify({ status: "ACTIVE" }) }); await refresh(); }
-    catch (e) { setMsg(String(e)); }
+    catch (e) { setMsg(humanizeError(e)); }
   }
 
   if (!signedIn) {

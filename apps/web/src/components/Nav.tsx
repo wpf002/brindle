@@ -65,7 +65,7 @@ export function Nav() {
             <div>
               <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22 }}>Sign in to Brindle</h2>
               <p className="muted" style={{ fontSize: 13.5, margin: "4px 0 0" }}>
-                Enter any email — dev accounts are provisioned instantly with buyer credit.
+                No password needed. We&rsquo;ll set up your account and buyer credit instantly.
               </p>
             </div>
             <input className="input" placeholder="you@ranch.com" value={email}
