@@ -109,6 +109,48 @@ export async function consoleRoutes(app: FastifyInstance) {
     return { lotId: lot.id, epdWarnings: warnings };
   });
 
+  // Seller analytics: clearance, realized price vs opening, GMV, buyer reach.
+  app.get("/console/analytics", { preHandler: requireAuth }, async (req) => {
+    const sellerId = req.session!.userId;
+    const lots = await prisma.lot.findMany({
+      where: { auction: { sellerId } },
+      select: {
+        id: true, status: true, startingBidCents: true,
+        bids: { orderBy: { seq: "desc" }, take: 1, select: { amountCents: true } },
+      },
+    });
+    const sold = lots.filter((l) => l.status === LotStatus.SOLD);
+    const gmvCents = sold.reduce((sum, l) => sum + (l.bids[0]?.amountCents ?? 0n), 0n);
+
+    const bidders = await prisma.bid.findMany({
+      where: { lot: { auction: { sellerId } } },
+      select: { bidderId: true },
+      distinct: ["bidderId"],
+    });
+
+    // Average realized-over-opening ratio across sold lots (integer basis points).
+    let realizationBps = 0;
+    if (sold.length > 0) {
+      let acc = 0;
+      for (const l of sold) {
+        const hammer = l.bids[0]?.amountCents ?? l.startingBidCents;
+        if (l.startingBidCents > 0n) {
+          acc += Number((hammer * 10_000n) / l.startingBidCents);
+        }
+      }
+      realizationBps = Math.round(acc / sold.length);
+    }
+
+    return {
+      totalLots: lots.length,
+      soldLots: sold.length,
+      clearanceRateBps: lots.length ? Math.round((sold.length / lots.length) * 10_000) : 0,
+      gmvCents: gmvCents.toString(),
+      realizationBps, // 10000 = sold at opening; >10000 = above opening
+      buyerReach: bidders.length,
+    };
+  });
+
   // Open a lot for bidding (or withdraw it).
   app.post<{ Params: { lotId: string }; Body: { status?: LotStatus } }>(
     "/console/lots/:lotId/status",

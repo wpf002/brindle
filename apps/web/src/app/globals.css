@@ -79,3 +79,7 @@ a { color: inherit; text-decoration: none; }
 .video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: var(--radius); margin-bottom: 1rem; }
 .video.placeholder { display: flex; align-items: center; justify-content: center; color: var(--muted);
   border: 1px dashed var(--line); }
+.comps { margin-top: 1rem; padding: .8rem 1rem; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); }
+.comps-avg { font-size: 1.3rem; font-weight: 700; color: var(--accent-2); font-variant-numeric: tabular-nums; }
+.comps-range { font-size: .78rem; margin-top: .2rem; }

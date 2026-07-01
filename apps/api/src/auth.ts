@@ -80,3 +80,12 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
     await reply.code(401).send({ error: "UNAUTHENTICATED" });
   }
 }
+
+// Sensitive back-office actions (credit approval, market ingest) sit behind a
+// shared admin token until full RBAC lands.
+export async function requireAdmin(req: FastifyRequest, reply: FastifyReply) {
+  const expected = process.env.ADMIN_API_TOKEN;
+  if (!expected || req.headers["x-admin-token"] !== expected) {
+    await reply.code(403).send({ error: "FORBIDDEN" });
+  }
+}

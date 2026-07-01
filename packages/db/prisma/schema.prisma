@@ -235,6 +235,23 @@ model Contract {
   createdAt         DateTime       @default(now())
 }
 
+// Ingested USDA AMS video/internet auction comps — the bid-box market context.
+model MarketReport {
+  id             String   @id @default(uuid())
+  reportDate     DateTime
+  region         String
+  category       String // e.g. "STEERS Medium/Large 1"
+  wtLowLbs       Int
+  wtHighLbs      Int
+  avgCentsPerCwt Int // integer cents per hundredweight
+  headCount      Int
+  source         String // AMS report slug
+  createdAt      DateTime @default(now())
+
+  @@unique([source, category, wtLowLbs, wtHighLbs, reportDate])
+  @@index([category, wtLowLbs, wtHighLbs, reportDate])
+}
+
 // INTEGRATED_PAYMENT settlement mode (genetics / small lots)
 model Payment {
   id               String        @id @default(uuid())

@@ -50,6 +50,9 @@ importers:
       '@brindle/genetics':
         specifier: workspace:*
         version: link:../../packages/genetics
+      '@brindle/market-data':
+        specifier: workspace:*
+        version: link:../../packages/market-data
       '@brindle/settlement':
         specifier: workspace:*
         version: link:../../packages/settlement
@@ -198,10 +201,17 @@ importers:
         version: 2.1.9(@types/node@20.19.43)
 
   packages/market-data:
+    dependencies:
+      '@brindle/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@20.19.43)
 
   packages/settlement:
     dependencies:

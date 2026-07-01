@@ -4,6 +4,7 @@ import { getLot } from "../../../lib/api";
 import { formatCents, priceUnitLabel } from "../../../lib/format";
 import { BidBox } from "../../../components/BidBox";
 import { EpdTable } from "../../../components/EpdTable";
+import { Comparables } from "../../../components/Comparables";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ interface LotDetail {
     lotNumber: number;
     category: string;
     priceUnit: string;
+    avgWeightLbs: string | null;
     startingBidCents: string;
     bidIncrementCents: string;
     bullName: string | null;
@@ -90,6 +92,9 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             initialPriceCents={price}
             incrementCents={increment}
           />
+          {lot.priceUnit === "CWT" && lot.avgWeightLbs && (
+            <Comparables category={lot.category} weightLbs={Number(lot.avgWeightLbs)} />
+          )}
           <p className="muted openingnote">
             Opening {formatCents(lot.startingBidCents)}
             {priceUnitLabel(lot.priceUnit)}
