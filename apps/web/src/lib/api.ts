@@ -32,6 +32,7 @@ export interface AuctionHeader {
   status: string;
   format: string;
   streamUrl: string | null;
+  sellerId: string;
 }
 
 export async function getAuction(id: string): Promise<AuctionHeader | null> {

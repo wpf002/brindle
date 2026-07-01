@@ -1,8 +1,8 @@
 # Railway deployment
 
-Brindle runs as five Railway services in one project. The two managed plugins
-back the engine's durability guarantees; the three app services each deploy from
-this monorepo with their own root and a `railway.json`.
+Brindle runs as three Railway services in one project. The two managed plugins
+back the engine's durability guarantees; the single Next app and the API each
+deploy from this monorepo with their own root and a `railway.json`.
 
 ## Services
 
@@ -11,8 +11,7 @@ this monorepo with their own root and a `railway.json`.
 | `postgres` | managed plugin    | —              | Provides `DATABASE_URL`. Enable PITR backups (G4). |
 | `redis`    | managed plugin    | —              | Live auction state, the per-room bid stream, locks. Provides `REDIS_URL`. |
 | `api`      | `apps/api`        | repo root      | Fastify. Healthcheck `/health`. Public WS + REST. |
-| `web`      | `apps/web`        | repo root      | Next.js buyer marketplace (port from `$PORT`). |
-| `console`  | `apps/console`    | repo root      | Next.js seller console. |
+| `web`      | `apps/web`        | repo root      | Next.js — one app: marketplace, bidding, seller console, and live ring. |
 
 Each app service builds from the **repo root** (not the app subdir) so pnpm can
 resolve workspace packages; the per-app `railway.json` filters the build to the

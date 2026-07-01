@@ -43,7 +43,7 @@ export async function catalogRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>("/auctions/:id", async (req, reply) => {
     const auction = await prisma.auction.findUnique({
       where: { id: req.params.id },
-      select: { id: true, name: true, status: true, format: true, streamUrl: true, startsAt: true },
+      select: { id: true, name: true, status: true, format: true, streamUrl: true, startsAt: true, sellerId: true },
     });
     if (!auction) return reply.code(404).send({ error: "AUCTION_NOT_FOUND" });
     return serializeBigints(auction);
