@@ -8,7 +8,9 @@
     "start": "node dist/index.js",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "loadtest": "tsx src/loadtest.ts",
+    "seed": "tsx src/seed-dev.ts"
   },
   "dependencies": {
     "fastify": "^4.28.0",

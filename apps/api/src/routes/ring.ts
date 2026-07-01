@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma, AuctionStatus, AuctionFormat } from "@brindle/db";
 import type { RingAction, RingActionEnvelope, RingBidKind } from "@brindle/auction";
+import { MessageGate } from "../gateway/messageGate.js";
 
 // Live-ring gateway. Auctioneer control (set ask / hammer / pass) and take-the-ask
 // (online / floor / phone) flow through the room's single ring sequencer. The
@@ -11,10 +12,9 @@ export async function ringRoutes(app: FastifyInstance) {
     { websocket: true },
     (socket, req) => {
       const roomId = req.params.auctionId;
-      let ready = false;
       let isAuctioneer = false;
       let unsubscribe: (() => Promise<void>) | null = null;
-      const pending: Buffer[] = [];
+      const gate = new MessageGate<Buffer>();
 
       function fail(reason: string) {
         socket.send(JSON.stringify({ ok: false, reason }));
@@ -75,7 +75,7 @@ export async function ringRoutes(app: FastifyInstance) {
         void app.ring.submit(roomId, envelope);
       }
 
-      socket.on("message", (raw: Buffer) => (ready ? handle(raw) : pending.push(raw)));
+      socket.on("message", (raw: Buffer) => gate.push(raw));
       socket.on("close", () => {
         if (unsubscribe) void unsubscribe();
       });
@@ -105,9 +105,7 @@ export async function ringRoutes(app: FastifyInstance) {
         unsubscribe = await app.ring.subscribe(roomId, (event) => {
           socket.send(JSON.stringify(event, (_k, v) => (typeof v === "bigint" ? v.toString() : v)));
         });
-        ready = true;
-        for (const raw of pending) handle(raw);
-        pending.length = 0;
+        gate.open(handle);
       })();
     },
   );

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma, AuctionStatus } from "@brindle/db";
 import type { IncomingBid } from "@brindle/auction";
+import { MessageGate } from "../gateway/messageGate.js";
 
 // Gateway for live bidding. The socket NEVER resolves a bid itself — it stamps
 // trusted fields from the session and appends to the room's ingest stream, then
@@ -13,13 +14,11 @@ export async function bidsRoutes(app: FastifyInstance) {
     (socket, req) => {
       const roomId = req.params.auctionId;
 
-      // Attach the message listener SYNCHRONOUSLY, before any await, so a bid the
-      // client fires immediately on open isn't dropped during async setup. Buffer
-      // until the auction context is loaded and the event subscription is live.
-      let ready = false;
+      // Buffer inbound messages until async setup completes (see MessageGate) so a
+      // bid the client fires immediately on open isn't dropped during setup.
       let sellerId = "";
       let unsubscribe: (() => Promise<void>) | null = null;
-      const pending: Buffer[] = [];
+      const gate = new MessageGate<Buffer>();
 
       function handle(raw: Buffer) {
         let msg: { lotId?: string; amountCents?: string | number; proxyMaxCents?: string | number };
@@ -45,10 +44,7 @@ export async function bidsRoutes(app: FastifyInstance) {
         void app.sequencer.submit(roomId, bid);
       }
 
-      socket.on("message", (raw: Buffer) => {
-        if (ready) handle(raw);
-        else pending.push(raw);
-      });
+      socket.on("message", (raw: Buffer) => gate.push(raw));
       socket.on("close", () => {
         if (unsubscribe) void unsubscribe();
       });
@@ -81,9 +77,7 @@ export async function bidsRoutes(app: FastifyInstance) {
           );
         });
 
-        ready = true;
-        for (const raw of pending) handle(raw);
-        pending.length = 0;
+        gate.open(handle);
       })();
     },
   );
