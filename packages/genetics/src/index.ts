@@ -16,3 +16,4 @@ export {
   type TraitComparison,
 } from "./compare.js";
 export { parseEpdSet, type EpdParseResult } from "./ingest.js";
+export { deriveRegistry, registryBadges, type RegistryInfo } from "./registry.js";

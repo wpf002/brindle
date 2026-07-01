@@ -34,6 +34,7 @@ export function Nav() {
           <Link href="/" className="brand">Brindle<span className="dot">.</span></Link>
           <div className="nav-links">
             <Link href="/" className={`nav-link ${isActive("/") ? "active" : ""}`}>Auctions</Link>
+            <Link href="/news" className={`nav-link ${isActive("/news") ? "active" : ""}`}>News</Link>
             <Link href="/sell" className={`nav-link ${isActive("/sell") ? "active" : ""}`}>Sell</Link>
           </div>
           <div className="nav-spacer" />

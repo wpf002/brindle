@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { prisma, LotStatus, AuctionStatus, type LotCategory } from "@brindle/db";
+import { deriveRegistry } from "@brindle/genetics";
 import { PrismaLotStateStore } from "../sequencer/prismaStore.js";
 
 // Read side for buyers: the catalog and lot detail. Current price comes from the
@@ -28,9 +29,9 @@ export async function catalogRoutes(app: FastifyInstance) {
         },
         select: {
           id: true, lotNumber: true, category: true, priceUnit: true,
-          startingBidCents: true, bullName: true, primaryBreed: true,
+          startingBidCents: true, bullName: true, primaryBreed: true, bullRegId: true,
           dosesAvailable: true, endsAt: true, photos: true,
-          auction: { select: { id: true, name: true, startsAt: true, status: true } },
+          auction: { select: { id: true, name: true, startsAt: true, status: true, sellerId: true } },
         },
         orderBy: [{ auction: { startsAt: "asc" } }, { lotNumber: "asc" }],
         take: 200,
@@ -58,7 +59,7 @@ export async function catalogRoutes(app: FastifyInstance) {
           select: {
             id: true, name: true, status: true, format: true, startsAt: true,
             endsAt: true, softCloseSecs: true, buyerPremiumBps: true,
-            seller: { select: { businessName: true, legalName: true, state: true } },
+            seller: { select: { id: true, businessName: true, legalName: true, state: true, sellerVerified: true } },
           },
         },
       },
@@ -68,6 +69,7 @@ export async function catalogRoutes(app: FastifyInstance) {
     const state = await store.load(lot.id);
     return serializeBigints({
       lot,
+      registry: deriveRegistry(lot.bullRegId),
       live: state
         ? {
             currentPriceCents: state.highBidCents,

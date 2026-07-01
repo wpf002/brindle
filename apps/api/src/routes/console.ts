@@ -76,6 +76,7 @@ export async function consoleRoutes(app: FastifyInstance) {
       epd?: unknown;
       endsAt?: string;
       photos?: string[];
+      photoCredit?: string;
     };
   }>("/console/auctions/:auctionId/lots", { preHandler: requireAuth }, async (req, reply) => {
     const auction = await prisma.auction.findUnique({ where: { id: req.params.auctionId } });
@@ -111,6 +112,7 @@ export async function consoleRoutes(app: FastifyInstance) {
         epd: epd ? (epd as unknown as Prisma.InputJsonValue) : undefined,
         endsAt: b.endsAt ? new Date(b.endsAt) : null,
         photos: b.photos ?? [],
+        photoCredit: b.photoCredit ?? null,
       },
     });
     return { lotId: lot.id, epdWarnings: warnings };

@@ -12,6 +12,12 @@ interface Analytics {
   totalLots: number; soldLots: number; clearanceRateBps: number;
   gmvCents: string; realizationBps: number; buyerReach: number;
 }
+interface Profile {
+  title: string | null; bio: string | null; quote: string | null; foundedYear: number | null;
+}
+interface Operation {
+  id: string; name: string; location: string; description: string; acres: number | null; herdSize: number | null;
+}
 
 function dollarsToCents(s: string): string {
   const clean = s.trim().replace(/[$,]/g, "");
@@ -24,6 +30,7 @@ export default function Sell() {
   const [signedIn, setSignedIn] = useState(false);
   const [auctions, setAuctions] = useState<AuctionRow[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [operations, setOperations] = useState<Operation[]>([]);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -35,15 +42,59 @@ export default function Sell() {
 
   async function refresh() {
     try {
-      const [a, an] = await Promise.all([
+      const [a, an, ops, prof] = await Promise.all([
         authed<{ auctions: AuctionRow[] }>("/console/auctions"),
         authed<Analytics>("/console/analytics"),
+        authed<{ operations: Operation[] }>("/console/operations"),
+        authed<{ profile: Profile }>("/console/profile"),
       ]);
       setAuctions(a.auctions);
       setAnalytics(an);
+      setOperations(ops.operations);
+      setTitle(prof.profile.title ?? "");
+      setBio(prof.profile.bio ?? "");
+      setQuote(prof.profile.quote ?? "");
+      setFounded(prof.profile.foundedYear ? String(prof.profile.foundedYear) : "");
     } catch (e) { setMsg(String(e)); }
   }
 
+  // --- profile / story ---
+  const [title, setTitle] = useState("");
+  const [bio, setBio] = useState("");
+  const [quote, setQuote] = useState("");
+  const [founded, setFounded] = useState("");
+  async function saveProfile() {
+    try {
+      await authed("/console/profile", { method: "PUT", body: JSON.stringify({
+        title: title || undefined, bio: bio || undefined, quote: quote || undefined,
+        foundedYear: founded ? Number(founded) : undefined,
+      }) });
+      setMsg("Profile saved — visible on your public seller page");
+    } catch (e) { setMsg(String(e)); }
+  }
+
+  // --- operations ---
+  const [opName, setOpName] = useState("");
+  const [opLoc, setOpLoc] = useState("");
+  const [opDesc, setOpDesc] = useState("");
+  const [opAcres, setOpAcres] = useState("");
+  const [opHerd, setOpHerd] = useState("");
+  async function addOperation() {
+    try {
+      await authed("/console/operations", { method: "POST", body: JSON.stringify({
+        name: opName, location: opLoc, description: opDesc,
+        acres: opAcres ? Number(opAcres) : undefined, herdSize: opHerd ? Number(opHerd) : undefined,
+      }) });
+      setOpName(""); setOpLoc(""); setOpDesc(""); setOpAcres(""); setOpHerd("");
+      setMsg("Operation added"); await refresh();
+    } catch (e) { setMsg(String(e)); }
+  }
+  async function removeOperation(id: string) {
+    try { await authed(`/console/operations/${id}`, { method: "DELETE" }); await refresh(); }
+    catch (e) { setMsg(String(e)); }
+  }
+
+  // --- auctions / lots ---
   const [aName, setAName] = useState("");
   const [aStart, setAStart] = useState("");
   const [premium, setPremium] = useState("0");
@@ -62,6 +113,7 @@ export default function Sell() {
   const [bull, setBull] = useState("");
   const [doses, setDoses] = useState("");
   const [start, setStart] = useState("");
+  const [photoCredit, setPhotoCredit] = useState("");
   const [epdText, setEpdText] = useState('{ "CED": 8, "BW": {"value": 1.2, "pct": 15}, "WW": 70, "Marb": {"value": 0.8, "pct": 4} }');
   async function addLot() {
     let epd: unknown;
@@ -71,7 +123,7 @@ export default function Sell() {
         method: "POST", body: JSON.stringify({
           lotNumber: Number(lotNo), category: "SEMEN", priceUnit: "DOSE",
           startingBidCents: dollarsToCents(start), bullName: bull || undefined,
-          dosesAvailable: doses ? Number(doses) : undefined, epd,
+          dosesAvailable: doses ? Number(doses) : undefined, photoCredit: photoCredit || undefined, epd,
         }),
       });
       setMsg(`Lot created${res.epdWarnings.length ? ` · EPD warnings: ${res.epdWarnings.join("; ")}` : ""}`);
@@ -117,6 +169,47 @@ export default function Sell() {
       {msg && <div className="statusmsg info" style={{ marginBottom: 18 }}>{msg}</div>}
 
       <div className="card-form">
+        <h2>Your story</h2>
+        <p className="block-note" style={{ marginTop: -10 }}>Shown on your public seller page — the &ldquo;behind the brand&rdquo; profile buyers see.</p>
+        <div className="form-grid">
+          <label className="field"><span className="label">Title / role</span><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Owner & General Manager" /></label>
+          <label className="field"><span className="label">Founded year</span><input className="input" value={founded} onChange={(e) => setFounded(e.target.value)} placeholder="1987" /></label>
+        </div>
+        <label className="field" style={{ marginBottom: 14 }}><span className="label">Bio</span>
+          <textarea className="input" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Two or three paragraphs on the program's history and philosophy…" style={{ fontFamily: "inherit" }} />
+        </label>
+        <label className="field" style={{ marginBottom: 16 }}><span className="label">Pull-quote</span>
+          <input className="input" value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="A short, quotable line about how you run the program." />
+        </label>
+        <button className="btn btn-primary" onClick={saveProfile}>Save story</button>
+      </div>
+
+      <div className="card-form">
+        <h2>Operations</h2>
+        <p className="block-note" style={{ marginTop: -10 }}>Your ranch properties or divisions — shown on your profile page.</p>
+        {operations.length > 0 && (
+          <ul className="lotlist" style={{ marginBottom: 16 }}>
+            {operations.map((op) => (
+              <li key={op.id}>
+                <span><strong>{op.name}</strong> — {op.location}</span>
+                <button className="btn-link" style={{ marginLeft: "auto", color: "var(--danger)" }} onClick={() => removeOperation(op.id)}>Remove</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="form-grid">
+          <label className="field"><span className="label">Name</span><input className="input" value={opName} onChange={(e) => setOpName(e.target.value)} placeholder="Home Place" /></label>
+          <label className="field"><span className="label">Location</span><input className="input" value={opLoc} onChange={(e) => setOpLoc(e.target.value)} placeholder="Big Timber, Montana" /></label>
+          <label className="field"><span className="label">Acres</span><input className="input" value={opAcres} onChange={(e) => setOpAcres(e.target.value)} /></label>
+          <label className="field"><span className="label">Herd size</span><input className="input" value={opHerd} onChange={(e) => setOpHerd(e.target.value)} /></label>
+        </div>
+        <label className="field" style={{ marginBottom: 16 }}><span className="label">Description</span>
+          <input className="input" value={opDesc} onChange={(e) => setOpDesc(e.target.value)} placeholder="What happens on this property" />
+        </label>
+        <button className="btn btn-primary" onClick={addOperation} disabled={!opName || !opLoc || !opDesc}>Add operation</button>
+      </div>
+
+      <div className="card-form">
         <h2>New auction</h2>
         <div className="form-grid">
           <label className="field"><span className="label">Sale name</span><input className="input" value={aName} onChange={(e) => setAName(e.target.value)} placeholder="Spring Genetics Sale" /></label>
@@ -139,6 +232,7 @@ export default function Sell() {
           <label className="field"><span className="label">Bull name</span><input className="input" value={bull} onChange={(e) => setBull(e.target.value)} /></label>
           <label className="field"><span className="label">Doses</span><input className="input" value={doses} onChange={(e) => setDoses(e.target.value)} /></label>
           <label className="field"><span className="label">Opening bid $</span><input className="input" value={start} onChange={(e) => setStart(e.target.value)} placeholder="25.00" /></label>
+          <label className="field"><span className="label">Photo credit</span><input className="input" value={photoCredit} onChange={(e) => setPhotoCredit(e.target.value)} placeholder="Photo: Jane Smith" /></label>
         </div>
         <label className="field" style={{ marginBottom: 16 }}><span className="label">EPDs (JSON)</span>
           <textarea className="input" rows={3} value={epdText} onChange={(e) => setEpdText(e.target.value)} />

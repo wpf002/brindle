@@ -14,10 +14,11 @@ interface LotDetail {
     avgWeightLbs: string | null; startingBidCents: string; bidIncrementCents: string;
     bullName: string | null; bullRegId: string | null; primaryBreed: string | null;
     dosesAvailable: number | null; postThawMotility: string | null; storageFacility: string | null;
-    epd: EpdSet | null; photos: string[];
+    epd: EpdSet | null; photos: string[]; photoCredit: string | null;
     auction: { id: string; name: string; status: string; buyerPremiumBps: number;
-      seller: { businessName: string | null; legalName: string; state: string | null } };
+      seller: { id: string; businessName: string | null; legalName: string; state: string | null; sellerVerified: boolean } };
   };
+  registry: { code: string; name: string } | null;
   live: { currentPriceCents: string; highBidderId: string | null; bidIncrementCents: string; closed: boolean } | null;
 }
 
@@ -32,7 +33,7 @@ export default async function LotPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const { lot, live } = data;
+  const { lot, live, registry } = data;
   const price = live?.currentPriceCents ?? lot.startingBidCents;
   const increment = live?.bidIncrementCents ?? lot.bidIncrementCents;
   const seller = lot.auction.seller.businessName ?? lot.auction.seller.legalName;
@@ -50,15 +51,23 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             <h1>{lot.bullName ?? lot.category}</h1>
             <div className="lot-sub">
               {lot.category}
-              {lot.primaryBreed ? ` · ${lot.primaryBreed}` : ""} · {seller}
+              {lot.primaryBreed ? ` · ${lot.primaryBreed}` : ""} ·{" "}
+              <Link href={`/sellers/${lot.auction.seller.id}`} className="btn-link" style={{ fontSize: "inherit" }}>{seller}</Link>
+              {lot.auction.seller.sellerVerified && <span className="pill verified" style={{ marginLeft: 6 }}>Verified</span>}
               {lot.auction.seller.state ? ` · ${lot.auction.seller.state}` : ""}
             </div>
           </div>
 
           <div className="lot-hero"><span className="glyph">{glyph}</span></div>
+          {lot.photoCredit && <p className="photo-credit">{lot.photoCredit}</p>}
 
           <dl className="specs">
-            {lot.bullRegId && (<><dt>Registration</dt><dd className="tabular">{lot.bullRegId}</dd></>)}
+            {lot.bullRegId && (
+              <>
+                <dt>Registration</dt>
+                <dd className="tabular">{lot.bullRegId}{registry && <span className="dim"> · {registry.name}</span>}</dd>
+              </>
+            )}
             {lot.primaryBreed && (<><dt>Breed</dt><dd>{lot.primaryBreed}</dd></>)}
             {lot.dosesAvailable != null && (<><dt>Doses available</dt><dd className="tabular">{lot.dosesAvailable}</dd></>)}
             {lot.postThawMotility && (<><dt>Post-thaw motility</dt><dd className="tabular">{lot.postThawMotility}%</dd></>)}

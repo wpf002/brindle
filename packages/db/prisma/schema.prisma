@@ -138,8 +138,31 @@ model User {
   sellerVerified   Boolean      @default(false) // verified-seller badge
   createdAt        DateTime     @default(now())
 
+  // ── seller story / "behind the brand" profile ──
+  title            String?      // e.g. "Owner & General Manager"
+  bio              String?
+  quote            String?      // pull-quote shown on the seller's story page
+  foundedYear      Int?
+
   auctions         Auction[]    @relation("SellerAuctions")
   bids             Bid[]
+  operations       SellerOperation[]
+}
+
+// A seller's individual ranch properties/divisions — the multi-location story
+// ("Dixon Creek", "Frisco Creek") shown on their public profile page.
+model SellerOperation {
+  id          String  @id @default(uuid())
+  sellerId    String
+  seller      User    @relation(fields: [sellerId], references: [id])
+  name        String
+  location    String  // "Guthrie, Texas"
+  description String
+  acres       Int?
+  herdSize    Int?
+  sortOrder   Int     @default(0)
+
+  @@index([sellerId, sortOrder])
 }
 
 model Auction {
@@ -200,6 +223,7 @@ model Lot {
   reserveCents     BigInt?     // hidden floor
   status           LotStatus   @default(DRAFT)
   photos           String[]
+  photoCredit      String?     // "Photo: Peter Robbins"
   videoUrl         String?
 
   endsAt           DateTime?   // per-lot close (timed sales, soft-close target)
@@ -294,6 +318,25 @@ model ApiKey {
   active    Boolean   @default(true)
   lastUsed  DateTime?
   createdAt DateTime  @default(now())
+}
+
+// Editorial content: market reports, sale recaps, ranch news. Platform-authored
+// (gated by the same admin token as market-data ingest) — the marketplace's
+// editorial voice, not per-seller user-generated posts.
+model NewsPost {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  title       String
+  dek         String    // subhead / excerpt
+  body        String    // plain paragraphs, split on blank lines
+  category    String    // "Market Report" | "Sale Recap" | "Ranch News"
+  authorName  String
+  authorTitle String?
+  sellerId    String?   // optional tie-in to a seller's sale recap
+  publishedAt DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  @@index([category, publishedAt])
 }
 
 // Ingested USDA AMS video/internet auction comps — the bid-box market context.

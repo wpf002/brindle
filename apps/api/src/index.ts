@@ -18,6 +18,8 @@ import { marketRoutes } from "./routes/market.js";
 import { disputeRoutes } from "./routes/disputes.js";
 import { trustRoutes } from "./routes/trust.js";
 import { publicRoutes } from "./routes/public.js";
+import { sellerRoutes } from "./routes/sellers.js";
+import { newsRoutes } from "./routes/news.js";
 import { bidsRoutes } from "./routes/bids.js";
 import { ringRoutes } from "./routes/ring.js";
 
@@ -58,6 +60,8 @@ await app.register(marketRoutes);
 await app.register(disputeRoutes);
 await app.register(trustRoutes);
 await app.register(publicRoutes);
+await app.register(sellerRoutes);
+await app.register(newsRoutes);
 await app.register(bidsRoutes);
 await app.register(ringRoutes);
 
