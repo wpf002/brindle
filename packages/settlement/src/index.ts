@@ -1,7 +1,16 @@
-export * from "./fees.js";
-export * from "./gateway.js";
-export * from "./integratedPayment.js";
-export * from "./stripeGateway.js";
+export { computeFees, type FeeBreakdown } from "./fees.js";
+export {
+  FakePaymentGateway,
+  type PaymentGateway,
+  type PaymentState,
+  type HoldParams,
+} from "./gateway.js";
+export {
+  IntegratedPaymentService,
+  type HammerInput,
+  type PaymentRecord,
+} from "./integratedPayment.js";
+export { StripePaymentGateway } from "./stripeGateway.js";
 
 import type { FeeBreakdown } from "./fees.js";
 
