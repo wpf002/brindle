@@ -4,6 +4,8 @@ import cors from "@fastify/cors";
 import { authPlugin } from "./auth.js";
 import { SequencerManager } from "./sequencer/manager.js";
 import { PrismaLotStateStore } from "./sequencer/prismaStore.js";
+import { RingManager } from "./ring/manager.js";
+import { PrismaRingStore } from "./ring/prismaStore.js";
 import { health } from "./routes/health.js";
 import { authRoutes } from "./routes/auth.js";
 import { buyerRoutes } from "./routes/buyers.js";
@@ -13,21 +15,26 @@ import { settlementRoutes } from "./routes/settlement.js";
 import { catalogRoutes } from "./routes/catalog.js";
 import { consoleRoutes } from "./routes/console.js";
 import { bidsRoutes } from "./routes/bids.js";
+import { ringRoutes } from "./routes/ring.js";
 
 declare module "fastify" {
   interface FastifyInstance {
     sequencer: SequencerManager;
+    ring: RingManager;
   }
 }
 
 const app = Fastify({ logger: true });
 
-const sequencer = new SequencerManager(
-  process.env.REDIS_URL ?? "redis://localhost:6379",
-  new PrismaLotStateStore(),
-);
+const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
+const sequencer = new SequencerManager(redisUrl, new PrismaLotStateStore());
+const ring = new RingManager(redisUrl, new PrismaRingStore());
 app.decorate("sequencer", sequencer);
-app.addHook("onClose", async () => sequencer.shutdown());
+app.decorate("ring", ring);
+app.addHook("onClose", async () => {
+  await sequencer.shutdown();
+  await ring.shutdown();
+});
 
 await app.register(cors, {
   origin: (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3002").split(","),
@@ -44,6 +51,7 @@ await app.register(settlementRoutes);
 await app.register(catalogRoutes);
 await app.register(consoleRoutes);
 await app.register(bidsRoutes);
+await app.register(ringRoutes);
 
 const port = Number(process.env.PORT ?? 3001);
 app
