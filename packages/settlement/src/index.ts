@@ -17,6 +17,14 @@ export {
   type ForwardContractTerms,
   type ContractSettlement,
 } from "./contract.js";
+export {
+  disputeTransition,
+  isTerminal,
+  type DisputeStatus,
+  type DisputeAction,
+  type DisputeClaim,
+  type DisputeTransition,
+} from "./dispute.js";
 
 import type { FeeBreakdown } from "./fees.js";
 

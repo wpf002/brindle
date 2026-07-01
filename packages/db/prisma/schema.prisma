@@ -101,6 +101,21 @@ enum PaymentStatus {
   DISPUTED
 }
 
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_REFUND
+  RESOLVED_RELEASE
+  WITHDRAWN
+}
+
+enum DisputeClaim {
+  NOT_AS_DESCRIBED
+  DELIVERY
+  WEIGHT_VARIANCE
+  GENETICS_QUALITY
+}
+
 // ──────────────────────────────────────────────────────────────
 // Models
 // ──────────────────────────────────────────────────────────────
@@ -118,6 +133,7 @@ model User {
   creditLimitCents BigInt?
   stripeAccountId  String?
   idVerifiedAt     DateTime?
+  sellerVerified   Boolean      @default(false) // verified-seller badge
   createdAt        DateTime     @default(now())
 
   auctions         Auction[]    @relation("SellerAuctions")
@@ -190,6 +206,7 @@ model Lot {
   bids             Bid[]
   contract         Contract?
   payment          Payment?
+  disputes         Dispute[]
 
   @@unique([auctionId, lotNumber])
 }
@@ -233,6 +250,36 @@ model Contract {
   signedAt          DateTime?
   deliveredAt       DateTime?
   createdAt         DateTime       @default(now())
+}
+
+// Structured dispute claim on a settled lot (INTEGRATED_PAYMENT hold/release).
+model Dispute {
+  id         String        @id @default(uuid())
+  lotId      String
+  lot        Lot           @relation(fields: [lotId], references: [id])
+  filedById  String
+  claim      DisputeClaim
+  status     DisputeStatus @default(OPEN)
+  detail     String
+  evidence   String[] // media keys (presigned uploads)
+  resolvedAt DateTime?
+  createdAt  DateTime      @default(now())
+
+  @@index([status])
+}
+
+// Post-transaction ratings — the trust surface.
+model Rating {
+  id        String   @id @default(uuid())
+  raterId   String
+  rateeId   String
+  lotId     String?
+  role      String // which side is being rated: "SELLER" | "BUYER"
+  stars     Int // 1..5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([rateeId])
 }
 
 // Ingested USDA AMS video/internet auction comps — the bid-box market context.
