@@ -39,6 +39,16 @@ export async function catalogRoutes(app: FastifyInstance) {
     },
   );
 
+  // Auction header (public) — name, status, live-video stream URL for the ring.
+  app.get<{ Params: { id: string } }>("/auctions/:id", async (req, reply) => {
+    const auction = await prisma.auction.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, name: true, status: true, format: true, streamUrl: true, startsAt: true },
+    });
+    if (!auction) return reply.code(404).send({ error: "AUCTION_NOT_FOUND" });
+    return serializeBigints(auction);
+  });
+
   // Lot detail with current standing price + reserve-met flag.
   app.get<{ Params: { id: string } }>("/lots/:id", async (req, reply) => {
     const lot = await prisma.lot.findUnique({

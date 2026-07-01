@@ -26,6 +26,20 @@ export async function getCatalog(): Promise<{ lots: CatalogLot[] }> {
   return r.json();
 }
 
+export interface AuctionHeader {
+  id: string;
+  name: string;
+  status: string;
+  format: string;
+  streamUrl: string | null;
+}
+
+export async function getAuction(id: string): Promise<AuctionHeader | null> {
+  const r = await fetch(`${API}/auctions/${id}`, { cache: "no-store" });
+  if (!r.ok) return null;
+  return r.json();
+}
+
 export async function getLot(id: string): Promise<unknown> {
   const r = await fetch(`${API}/lots/${id}`, { cache: "no-store" });
   if (!r.ok) return null;

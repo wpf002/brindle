@@ -1,6 +1,10 @@
 "use client";
 export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
+export function wsBase(): string {
+  return API.replace(/^http/, "ws");
+}
+
 const KEY = "brindle_console_token";
 
 export function getToken(): string | null {

@@ -33,3 +33,9 @@ button.link { background: none; color: var(--accent); padding: 0 .4rem; font-wei
 .auction-head { display: flex; gap: .5rem; align-items: center; }
 .auction ul { margin: .4rem 0 0; padding-left: 1.1rem; }
 .auction li { margin: .2rem 0; }
+.ringstate { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+.ringstate div { display: flex; flex-direction: column; gap: .2rem; }
+.ringstate strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.ringlog { list-style: none; padding: 0; margin: 0; font-family: ui-monospace, monospace; font-size: .82rem; }
+.ringlog li { padding: .2rem 0; border-bottom: 1px solid var(--line); color: var(--muted); }
+.row button { flex: 0 0 auto; }
