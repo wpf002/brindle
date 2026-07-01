@@ -1,13 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@brindle/db";
-import {
-  findComparables,
-  estimateFromComparables,
-  normalizeAmsRow,
-  type AmsRow,
-  type ComparableSale,
-} from "@brindle/market-data";
+import { normalizeAmsRow, type AmsRow } from "@brindle/market-data";
 import { requireAdmin } from "../auth.js";
+import { queryComparables } from "../marketQuery.js";
 
 export async function marketRoutes(app: FastifyInstance) {
   // Ingest AMS rows (admin/back-office). Idempotent on the natural key.
@@ -56,41 +51,8 @@ export async function marketRoutes(app: FastifyInstance) {
   }>("/market/comparables", async (req, reply) => {
     const { category, weight, region, asOf, head } = req.query;
     if (!category || !weight) return reply.code(400).send({ error: "CATEGORY_AND_WEIGHT_REQUIRED" });
-    const weightLbs = Number(weight);
-
-    const rows = await prisma.marketReport.findMany({
-      where: {
-        category,
-        wtLowLbs: { lte: weightLbs },
-        wtHighLbs: { gte: weightLbs },
-        ...(region ? { region } : {}),
-      },
-      orderBy: { reportDate: "desc" },
-      take: 500,
+    return queryComparables({
+      category, weightLbs: Number(weight), region, asOf, head: head != null ? Number(head) : undefined,
     });
-
-    const comps: ComparableSale[] = rows.map((r) => ({
-      reportDate: r.reportDate.toISOString().slice(0, 10),
-      region: r.region,
-      category: r.category,
-      weightBandLbs: [r.wtLowLbs, r.wtHighLbs],
-      weightedAvgCentsPerCwt: r.avgCentsPerCwt,
-      headCount: r.headCount,
-      source: r.source,
-    }));
-
-    const result = findComparables(comps, { category, weightLbs, region, asOf });
-    const estimateCents =
-      head != null ? estimateFromComparables(result, weightLbs, Number(head)) : null;
-
-    return {
-      weightedAvgCentsPerCwt: result.weightedAvgCentsPerCwt,
-      lowCentsPerCwt: result.lowCentsPerCwt,
-      highCentsPerCwt: result.highCentsPerCwt,
-      totalHead: result.totalHead,
-      matchCount: result.matches.length,
-      estimateCents: estimateCents != null ? estimateCents.toString() : null,
-      latestReportDate: result.matches[0]?.reportDate ?? null,
-    };
   });
 }

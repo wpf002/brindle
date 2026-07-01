@@ -17,6 +17,7 @@ import { consoleRoutes } from "./routes/console.js";
 import { marketRoutes } from "./routes/market.js";
 import { disputeRoutes } from "./routes/disputes.js";
 import { trustRoutes } from "./routes/trust.js";
+import { publicRoutes } from "./routes/public.js";
 import { bidsRoutes } from "./routes/bids.js";
 import { ringRoutes } from "./routes/ring.js";
 
@@ -56,6 +57,7 @@ await app.register(consoleRoutes);
 await app.register(marketRoutes);
 await app.register(disputeRoutes);
 await app.register(trustRoutes);
+await app.register(publicRoutes);
 await app.register(bidsRoutes);
 await app.register(ringRoutes);
 

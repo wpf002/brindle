@@ -53,6 +53,8 @@ enum LotCategory {
   CALVES
   SEMEN
   EMBRYO
+  SHEEP
+  GOATS
 }
 
 enum PriceUnit {
@@ -280,6 +282,18 @@ model Rating {
   createdAt DateTime @default(now())
 
   @@index([rateeId])
+}
+
+// API keys for third-party integrations + the standalone buyer-intelligence
+// surface. Only the SHA-256 hash is stored; the raw key is shown once at creation.
+model ApiKey {
+  id        String    @id @default(uuid())
+  keyHash   String    @unique
+  label     String
+  scopes    String[] // e.g. ["comparables", "catalog"]
+  active    Boolean   @default(true)
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
 }
 
 // Ingested USDA AMS video/internet auction comps — the bid-box market context.

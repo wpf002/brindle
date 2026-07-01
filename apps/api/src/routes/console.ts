@@ -9,7 +9,14 @@ import {
   LotStatus,
 } from "@brindle/db";
 import { parseEpdSet, ANGUS_TRAITS } from "@brindle/genetics";
+import { evaluateShipment, type Species } from "@brindle/compliance";
 import { requireAuth } from "../auth.js";
+
+function speciesFor(category: string): Species {
+  if (category === "SHEEP") return "SHEEP";
+  if (category === "GOATS") return "GOAT";
+  return "CATTLE";
+}
 
 // Seller console write side: create auctions, build lots (genetics EPD ingested
 // and validated here), and open/close them. Every mutation is scoped to the
@@ -150,6 +157,29 @@ export async function consoleRoutes(app: FastifyInstance) {
       buyerReach: bidders.length,
     };
   });
+
+  // Shipment-compliance check for a lot to a destination state (multi-state /
+  // multi-species). Drives the console's "docs required before shipping" panel.
+  app.get<{ Params: { lotId: string }; Querystring: { destState?: string; breedingBull?: string } }>(
+    "/console/lots/:lotId/compliance",
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const lot = await prisma.lot.findUnique({
+        where: { id: req.params.lotId },
+        select: { category: true, originState: true, diseaseTests: true, auction: { select: { sellerId: true } } },
+      });
+      if (!lot) return reply.code(404).send({ error: "LOT_NOT_FOUND" });
+      if (lot.auction.sellerId !== req.session!.userId) return reply.code(403).send({ error: "NOT_LOT_SELLER" });
+
+      const destState = req.query.destState ?? lot.originState ?? "";
+      return evaluateShipment({
+        species: speciesFor(lot.category),
+        originState: lot.originState ?? "",
+        destState,
+        breedingIntactMale: req.query.breedingBull === "true" || lot.category === "BULLS",
+      });
+    },
+  );
 
   // Open a lot for bidding (or withdraw it).
   app.post<{ Params: { lotId: string }; Body: { status?: LotStatus } }>(

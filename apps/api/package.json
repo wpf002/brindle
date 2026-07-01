@@ -25,6 +25,7 @@
     "@brindle/auction": "workspace:*",
     "@brindle/genetics": "workspace:*",
     "@brindle/market-data": "workspace:*",
+    "@brindle/compliance": "workspace:*",
     "@brindle/settlement": "workspace:*"
   },
   "devDependencies": { "tsx": "^4.16.0", "typescript": "^5.5.0", "vitest": "^2.0.0" }
