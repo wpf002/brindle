@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Inter, Fraunces } from "next/font/google";
 import { Nav } from "../components/Nav";
+import { Footer } from "../components/Footer";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const fraunces = Fraunces({
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Nav />
         {children}
+        <Footer />
       </body>
     </html>
   );

@@ -55,10 +55,6 @@ export default async function Page({ searchParams }: { searchParams: { category?
           </div>
         )}
       </section>
-
-      <footer className="footer">
-        <div className="wrap">Brindle — integer-cent bidding engine · marketplace facilitator · genetics-first.</div>
-      </footer>
     </main>
   );
 }

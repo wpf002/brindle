@@ -2,20 +2,28 @@
    Brindle design system — warm editorial marketplace
    ============================================================ */
 :root {
-  --paper: #f7f4ee;
+  /* palette pulled from the 6666 Ranch site: deep oxblood chrome, brick-red
+     accent, brass secondary, warm cream paper */
+  --paper: #f6f2eb;
   --surface: #ffffff;
-  --surface-2: #fbf9f5;
-  --ink: #211d18;
-  --ink-2: #5f574d;
-  --ink-3: #8a8176;
-  --line: #e7e0d5;
-  --line-2: #efe9df;
-  --rust: #b4531d;
-  --rust-ink: #8f3f13;
-  --rust-wash: #f7ebe1;
+  --surface-2: #faf6f0;
+  --ink: #241a16;
+  --ink-2: #5c4f47;
+  --ink-3: #8a7d73;
+  --line: #e6dccd;
+  --line-2: #eee5d6;
+
+  --maroon: #512421;      /* oxblood — nav, footer, ring theater chrome */
+  --maroon-deep: #321412; /* darker oxblood — hover/pressed on chrome */
+  --maroon-line: #6b3835; /* hairlines on oxblood chrome */
+
+  --rust: #7c2a24;        /* brand-red accent — buttons, links, prices */
+  --rust-ink: #5c1f1b;
+  --rust-wash: #f3e6e0;
   --forest: #2f6b45;
   --forest-wash: #e6efe8;
-  --gold: #c08a2d;
+  --gold: #8a5a2b;        /* brass */
+  --gold-wash: #f3e8d8;
   --danger: #a83a34;
 
   --radius: 14px;
@@ -55,22 +63,23 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing:
 
 /* ---------- top nav ---------- */
 .nav { position: sticky; top: 0; z-index: 50;
-  background: rgba(247, 244, 238, 0.82); backdrop-filter: saturate(180%) blur(12px);
-  border-bottom: 1px solid var(--line); }
+  background: var(--maroon); border-bottom: 1px solid var(--maroon-line); }
 .nav-inner { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; height: 62px;
   display: flex; align-items: center; gap: 24px; }
-.brand { font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
-.brand .dot { color: var(--rust); }
+.brand { font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: #fff; }
+.brand .dot { color: #d9a259; }
 .nav-links { display: flex; gap: 4px; }
-.nav-link { padding: 7px 13px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-2); transition: all .15s; }
-.nav-link:hover { color: var(--ink); background: var(--line-2); }
-.nav-link.active { color: var(--rust-ink); background: var(--rust-wash); }
+.nav-link { padding: 7px 13px; border-radius: 999px; font-size: 14px; font-weight: 500; color: #e7d8ce; transition: all .15s; }
+.nav-link:hover { color: #fff; background: rgba(255,255,255,.09); }
+.nav-link.active { color: #fff; background: rgba(255,255,255,.14); }
 .nav-spacer { flex: 1; }
 .nav-user { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
-.chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--line);
-  background: var(--surface); border-radius: 999px; font-size: 13px; font-weight: 500; box-shadow: var(--shadow-sm); }
-.chip .num { color: var(--rust-ink); font-variant-numeric: tabular-nums; }
-.avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--rust); color: #fff;
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.08); border-radius: 999px; font-size: 13px; font-weight: 500; color: #f1e6de; }
+.chip .num { color: #f0c896; font-variant-numeric: tabular-nums; }
+.nav-user .btn-link { color: #e7d8ce; }
+.nav-user .btn-link:hover { color: #fff; }
+.avatar { width: 24px; height: 24px; border-radius: 50%; background: #d9a259; color: var(--maroon-deep);
   display: grid; place-items: center; font-size: 11px; font-weight: 700; }
 
 /* ---------- buttons ---------- */
@@ -102,7 +111,7 @@ textarea.input { font-family: ui-monospace, monospace; font-size: 13px; resize: 
   letter-spacing: .04em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
   border: 1px solid var(--line); color: var(--ink-2); background: var(--surface); }
 .pill.live { color: var(--forest); border-color: color-mix(in srgb, var(--forest) 30%, transparent); background: var(--forest-wash); }
-.pill.scheduled { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 32%, transparent); background: #f8f0dd; }
+.pill.scheduled { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 32%, transparent); background: var(--gold-wash); }
 .pill.sold { color: var(--ink-3); }
 .pill.verified { color: var(--forest); background: var(--forest-wash); border: none; }
 .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--rust); }
@@ -127,9 +136,9 @@ textarea.input { font-family: ui-monospace, monospace; font-size: 13px; resize: 
   overflow: hidden; transition: transform .18s, box-shadow .18s, border-color .18s; box-shadow: var(--shadow-sm); }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--line-2); }
 .card-media { height: 150px; position: relative; display: flex; align-items: flex-start; justify-content: space-between;
-  padding: 12px; background: linear-gradient(135deg, #efe7da 0%, #e3d4bf 55%, #d8c3a6 100%); }
+  padding: 12px; background: linear-gradient(135deg, #ecdfd0 0%, #d8b89a 55%, #b97b5e 100%); }
 .card-media .glyph { position: absolute; right: 14px; bottom: -6px; font-family: var(--font-display);
-  font-size: 78px; color: rgba(120, 92, 52, .16); line-height: 1; user-select: none; }
+  font-size: 78px; color: rgba(81, 36, 33, .18); line-height: 1; user-select: none; }
 .card-body { padding: 16px 17px 18px; }
 .card-lotno { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
 .card h3 { font-size: 20px; margin: 3px 0 8px; }
@@ -149,8 +158,8 @@ textarea.input { font-family: ui-monospace, monospace; font-size: 13px; resize: 
 .lot-head h1 { font-size: 38px; margin: 8px 0 10px; }
 .lot-sub { color: var(--ink-2); font-size: 15px; }
 .lot-hero { height: 260px; border-radius: var(--radius); margin: 22px 0 26px; position: relative; overflow: hidden;
-  background: linear-gradient(135deg, #efe7da 0%, #e3d4bf 55%, #d3bb9a 100%); display: flex; align-items: flex-end; padding: 20px; }
-.lot-hero .glyph { position: absolute; right: 24px; bottom: -18px; font-family: var(--font-display); font-size: 190px; color: rgba(120, 92, 52, .14); line-height: 1; }
+  background: linear-gradient(135deg, #ecdfd0 0%, #d8b89a 55%, #a8674c 100%); display: flex; align-items: flex-end; padding: 20px; }
+.lot-hero .glyph { position: absolute; right: 24px; bottom: -18px; font-family: var(--font-display); font-size: 190px; color: rgba(81, 36, 33, .16); line-height: 1; }
 .specs { display: grid; grid-template-columns: max-content 1fr; gap: 11px 26px; margin: 4px 0 30px; font-size: 14.5px; }
 .specs dt { color: var(--ink-3); }
 .specs dd { margin: 0; font-weight: 500; }
@@ -210,18 +219,29 @@ textarea.input { font-family: ui-monospace, monospace; font-size: 13px; resize: 
 .signin-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
   box-shadow: var(--shadow); padding: 30px; margin-top: 24px; text-align: left; display: flex; flex-direction: column; gap: 14px; }
 
-/* ---------- live ring (dark theater) ---------- */
-.ring-theater { min-height: calc(100vh - 62px); background: #14110d; color: #f1ece3; }
+/* ---------- live ring (oxblood theater) ---------- */
+.ring-theater { min-height: calc(100vh - 62px); background: var(--maroon-deep); color: #f1e6de; }
 .ring-video { aspect-ratio: 16/9; background: #000; border-radius: var(--radius); overflow: hidden;
-  display: grid; place-items: center; color: #6b6157; border: 1px solid #2a241c; }
+  display: grid; place-items: center; color: #b89184; border: 1px solid #522a26; }
 .ring-video video { width: 100%; height: 100%; }
 .ring-grid { display: grid; grid-template-columns: 1fr 340px; gap: 28px; padding: 32px 0; }
 @media (max-width: 860px) { .ring-grid { grid-template-columns: 1fr; } }
-.ring-panel { background: #1c1811; border: 1px solid #2f2820; border-radius: var(--radius-lg); padding: 26px; }
-.ring-standing .k, .ring-ask .k { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #9a8f80; }
+.ring-panel { background: #431e1b; border: 1px solid #5c2d29; border-radius: var(--radius-lg); padding: 26px; }
+.ring-standing .k, .ring-ask .k { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #c9a99d; }
 .ring-standing .big { font-family: var(--font-display); font-size: 48px; line-height: 1; margin-top: 4px; }
-.ring-ask { margin-top: 22px; padding-top: 22px; border-top: 1px solid #2f2820; }
-.ring-ask .big { font-family: var(--font-display); font-size: 30px; color: var(--gold); margin-top: 4px; }
+.ring-ask { margin-top: 22px; padding-top: 22px; border-top: 1px solid #5c2d29; }
+.ring-ask .big { font-family: var(--font-display); font-size: 30px; color: #e0a04f; margin-top: 4px; }
 .ring-log { list-style: none; margin: 18px 0 0; padding: 0; font-family: ui-monospace, monospace; font-size: 12.5px; }
-.ring-log li { padding: 5px 0; border-top: 1px solid #2a241c; color: #9a8f80; }
-.footer { border-top: 1px solid var(--line); padding: 28px 0; color: var(--ink-3); font-size: 13px; }
+.ring-log li { padding: 5px 0; border-top: 1px solid #5c2d29; color: #c9a99d; }
+
+/* ---------- footer (oxblood band, matches the site's signature chrome) ---------- */
+.footer { background: var(--maroon); color: #cbb6ab; padding: 0; margin-top: 60px; }
+.footer-inner { padding: 44px 0 30px; display: flex; flex-wrap: wrap; gap: 40px; justify-content: space-between; }
+.footer-brand { font-family: var(--font-display); font-size: 22px; color: #fff; }
+.footer-brand .dot { color: #d9a259; }
+.footer-tag { font-size: 13px; color: #b89f92; margin-top: 6px; max-width: 34ch; }
+.footer-cols { display: flex; gap: 56px; flex-wrap: wrap; }
+.footer-col .h { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #d9a259; margin-bottom: 10px; }
+.footer-col a, .footer-col div { display: block; font-size: 13.5px; color: #dccabe; margin-bottom: 7px; }
+.footer-col a:hover { color: #fff; }
+.footer-bottom { border-top: 1px solid var(--maroon-line); padding: 16px 0; font-size: 12.5px; color: #a58d80; }

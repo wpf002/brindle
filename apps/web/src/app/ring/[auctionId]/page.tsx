@@ -75,8 +75,8 @@ export default function LiveRing({ params }: { params: { auctionId: string } }) 
     <div className="ring-theater">
       <div className="wrap ring-grid">
         <div>
-          <div className="eyebrow" style={{ color: "var(--gold)" }}>Live sale</div>
-          <h1 style={{ color: "#f1ece3", fontSize: 30, margin: "8px 0 18px" }}>{name}</h1>
+          <div className="eyebrow" style={{ color: "#e0a04f" }}>Live sale</div>
+          <h1 style={{ color: "#f1e6de", fontSize: 30, margin: "8px 0 18px" }}>{name}</h1>
           <div className="ring-video"><LiveVideo streamUrl={streamUrl} /></div>
           <ul className="ring-log">{log.map((l, i) => <li key={i}>{l}</li>)}</ul>
         </div>
@@ -85,7 +85,7 @@ export default function LiveRing({ params }: { params: { auctionId: string } }) 
           <div className="ring-standing">
             <div className="k">Standing bid</div>
             <div className="big tabular">{standing ? centsToDollars(standing) : "—"}</div>
-            <div style={{ fontSize: 12.5, color: "#9a8f80", marginTop: 6 }}>
+            <div style={{ fontSize: 12.5, color: "#c9a99d", marginTop: 6 }}>
               <span className={connected ? "dotlive" : "dotoff"} style={{ display: "inline-block", marginRight: 6 }} />
               {connected ? "Live" : "Connecting…"} · {status}
             </div>
@@ -100,15 +100,15 @@ export default function LiveRing({ params }: { params: { auctionId: string } }) 
               <button className="btn btn-primary btn-lg" onClick={openSignIn}>Sign in to join</button>
             ) : isAuctioneer ? (
               <>
-                <div className="field"><span className="label" style={{ color: "#9a8f80" }}>Set ask $</span>
-                  <input className="input" style={{ background: "#14110d", borderColor: "#2f2820", color: "#f1ece3" }}
+                <div className="field"><span className="label" style={{ color: "#c9a99d" }}>Set ask $</span>
+                  <input className="input" style={{ background: "#321412", borderColor: "#5c2d29", color: "#f1e6de" }}
                     value={newAsk} onChange={(e) => setNewAsk(e.target.value)} placeholder="1200.00" /></div>
                 <button className="btn btn-forest btn-lg" onClick={() => { send({ type: "SET_ASK", askCents: dollarsToCents(newAsk) }); setNewAsk(""); }} disabled={!newAsk || !lotId}>Set ask</button>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => send({ type: "HAMMER" })} disabled={!lotId}>Hammer</button>
                   <button className="btn btn-ghost" onClick={() => send({ type: "PASS" })} disabled={!lotId}>Pass</button>
                 </div>
-                <p style={{ fontSize: 12, color: "#6b6157" }}>You are the auctioneer for this sale.</p>
+                <p style={{ fontSize: 12, color: "#a8897c" }}>You are the auctioneer for this sale.</p>
               </>
             ) : (
               <button className="btn btn-forest btn-lg" onClick={() => send({ type: "TAKE_ASK", kind: "ONLINE" })}
