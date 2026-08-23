@@ -94,6 +94,11 @@ export class SequencerManager {
     }
   }
 
+  /** Readiness check — confirms the Redis connection is actually usable. */
+  async ping(): Promise<void> {
+    await this.ctrl.ping();
+  }
+
   /** Append a bid to a room's ingest stream from the gateway. */
   async submit(roomId: string, bid: Parameters<RedisBidStream["add"]>[1]): Promise<string> {
     this.ensure(roomId);

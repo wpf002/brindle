@@ -32,6 +32,7 @@ import { adminRoutes } from "./routes/admin.js";
 import { bidsRoutes } from "./routes/bids.js";
 import { ringRoutes } from "./routes/ring.js";
 import { closeExpiredLots } from "./lotCloser.js";
+import { initObservability } from "./observability.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -41,6 +42,9 @@ declare module "fastify" {
 }
 
 const app = Fastify({ logger: true, trustProxy: true });
+
+// Install the error handler and crash hooks before anything else registers.
+initObservability(app);
 
 const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
 const sequencer = new SequencerManager(redisUrl, new PrismaLotStateStore());

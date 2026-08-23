@@ -17,6 +17,20 @@ const ALLOWED = new Set([
 
 const PRESIGN_TTL_SECS = 300;
 
+// Cap what a presigned URL can be used to upload. Without this a valid URL is
+// a blank cheque against the bucket — the signature says nothing about size.
+// ContentLength is signed into the URL, so the storage provider rejects any PUT
+// whose body doesn't match exactly.
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024; // 15 MB
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB
+const MAX_DOC_BYTES = 25 * 1024 * 1024; // 25 MB
+
+function maxBytesFor(contentType: string): number {
+  if (contentType.startsWith("video/")) return MAX_VIDEO_BYTES;
+  if (contentType === "application/pdf") return MAX_DOC_BYTES;
+  return MAX_IMAGE_BYTES;
+}
+
 let client: S3Client | null = null;
 function s3(): S3Client {
   if (client) return client;
@@ -37,6 +51,7 @@ function s3(): S3Client {
 
 export interface PresignInput {
   contentType: string;
+  contentLength: number; // exact byte size of the file being uploaded
   prefix?: string; // e.g. "lots", "certs" — namespaces the object key
 }
 
@@ -44,12 +59,21 @@ export interface PresignResult {
   uploadUrl: string;
   key: string;
   expiresInSecs: number;
+  maxBytes: number;
 }
 
 export async function presignUpload(input: PresignInput): Promise<PresignResult> {
   if (!ALLOWED.has(input.contentType)) {
     throw new Error(`UNSUPPORTED_CONTENT_TYPE:${input.contentType}`);
   }
+  const maxBytes = maxBytesFor(input.contentType);
+  if (!Number.isFinite(input.contentLength) || input.contentLength <= 0) {
+    throw new Error("CONTENT_LENGTH_REQUIRED");
+  }
+  if (input.contentLength > maxBytes) {
+    throw new Error(`FILE_TOO_LARGE:${maxBytes}`);
+  }
+
   const bucket = process.env.S3_BUCKET;
   if (!bucket) throw new Error("S3_BUCKET_NOT_CONFIGURED");
 
@@ -58,9 +82,14 @@ export async function presignUpload(input: PresignInput): Promise<PresignResult>
 
   const uploadUrl = await getSignedUrl(
     s3(),
-    new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: input.contentType }),
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ContentType: input.contentType,
+      ContentLength: input.contentLength,
+    }),
     { expiresIn: PRESIGN_TTL_SECS },
   );
 
-  return { uploadUrl, key, expiresInSecs: PRESIGN_TTL_SECS };
+  return { uploadUrl, key, expiresInSecs: PRESIGN_TTL_SECS, maxBytes };
 }

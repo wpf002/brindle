@@ -157,6 +157,14 @@ function AuthModal({
           {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
         </button>
 
+        {mode === "register" && (
+          <p className="dim" style={{ fontSize: 12, textAlign: "center", margin: 0 }}>
+            By creating an account you agree to our{" "}
+            <Link href="/terms" className="btn-link" style={{ fontSize: "inherit" }}>terms</Link> and{" "}
+            <Link href="/privacy" className="btn-link" style={{ fontSize: "inherit" }}>privacy policy</Link>.
+          </p>
+        )}
+
         <p className="muted" style={{ fontSize: 13, textAlign: "center", margin: 0 }}>
           {mode === "signin" ? (
             <>New to Brindle? <button className="btn-link" onClick={() => onMode("register")}>Create an account</button></>

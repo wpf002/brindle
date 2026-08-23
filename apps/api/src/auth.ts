@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
+import { createHash, timingSafeEqual } from "node:crypto";
 import fp from "fastify-plugin";
 import type { FastifyReply, FastifyRequest } from "fastify";
 
@@ -82,10 +83,22 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
 }
 
 // Sensitive back-office actions (credit approval, market ingest) sit behind a
-// shared admin token until full RBAC lands.
+// shared admin token until full RBAC lands. Compared in constant time so the
+// endpoint can't be used as an oracle to recover the token byte by byte.
 export async function requireAdmin(req: FastifyRequest, reply: FastifyReply) {
   const expected = process.env.ADMIN_API_TOKEN;
-  if (!expected || req.headers["x-admin-token"] !== expected) {
+  const provided = req.headers["x-admin-token"];
+  if (!expected || typeof provided !== "string" || !safeEqual(provided, expected)) {
     await reply.code(403).send({ error: "FORBIDDEN" });
   }
+}
+
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  // timingSafeEqual throws on a length mismatch, which would itself leak length.
+  // Hash both to a fixed width first so every comparison costs the same.
+  const ah = createHash("sha256").update(ab).digest();
+  const bh = createHash("sha256").update(bb).digest();
+  return timingSafeEqual(ah, bh);
 }

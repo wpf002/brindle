@@ -13,6 +13,7 @@ export function Footer() {
           <div className="footer-col">
             <div className="h">Marketplace</div>
             <a href="/">Browse auctions</a>
+            <a href="/market">Market prices</a>
             <a href="/sell">Sell on Brindle</a>
           </div>
           <div className="footer-col">
@@ -22,13 +23,17 @@ export function Footer() {
             <div>Immutable bid log</div>
           </div>
           <div className="footer-col">
-            <div className="h">Support</div>
+            <div className="h">Legal</div>
+            <a href="/terms">Terms of service</a>
+            <a href="/privacy">Privacy policy</a>
             <a href="mailto:hello@brindle.example">Contact</a>
-            <div>Payments &amp; settlement</div>
           </div>
         </div>
       </div>
-      <div className="wrap footer-bottom">Brindle Marketplace, Inc. · genetics-first livestock auctions</div>
+      <div className="wrap footer-bottom">
+        Brindle Marketplace, Inc. · genetics-first livestock auctions ·{" "}
+        Market data courtesy of USDA Agricultural Marketing Service
+      </div>
     </footer>
   );
 }
