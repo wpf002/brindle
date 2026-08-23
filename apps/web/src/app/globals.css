@@ -394,3 +394,6 @@ textarea.input { font-family: ui-monospace, monospace; font-size: 13px; resize: 
   .footer-cols { gap: 28px; }
   .market-table { display: block; overflow-x: auto; white-space: nowrap; }
 }
+
+.lot-hero-img { width: 100%; height: 260px; object-fit: cover; border-radius: var(--radius);
+  margin: 22px 0 26px; display: block; background: var(--line-2); }

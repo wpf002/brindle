@@ -6,6 +6,15 @@ export function wsBase(): string {
   return API.replace(/^http/, "ws");
 }
 
+// Object-storage keys are stored bare (e.g. "lots/<uuid>"); the public base is
+// environment-specific. Returns null when storage isn't configured, so callers
+// fall back to a placeholder rather than rendering a broken image.
+export function mediaUrl(key: string): string | null {
+  const base = process.env.NEXT_PUBLIC_MEDIA_BASE_URL;
+  if (!base) return null;
+  return `${base.replace(/\/$/, "")}/${key}`;
+}
+
 export interface CatalogLot {
   id: string;
   lotNumber: number;

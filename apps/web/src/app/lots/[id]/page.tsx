@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { EpdSet } from "@brindle/genetics";
-import { getLot } from "../../../lib/api";
+import { getLot, mediaUrl } from "../../../lib/api";
 import { formatCents, priceUnitLabel } from "../../../lib/format";
 import { BidBox } from "../../../components/BidBox";
 import { EpdTable } from "../../../components/EpdTable";
@@ -85,7 +85,14 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          <div className="lot-hero"><span className="glyph">{glyph}</span></div>
+          {/* Real photo when the seller uploaded one; the monogram is the fallback.
+              Plain <img> rather than next/image: the object-storage host isn't
+              known at build time, so it can't be added to the image config. */}
+          {lot.photos.length > 0 && mediaUrl(lot.photos[0]!) ? (
+            <img className="lot-hero-img" src={mediaUrl(lot.photos[0]!)!} alt={lot.bullName ?? lot.category} />
+          ) : (
+            <div className="lot-hero"><span className="glyph">{glyph}</span></div>
+          )}
           {lot.photoCredit && <p className="photo-credit">{lot.photoCredit}</p>}
 
           <dl className="specs">

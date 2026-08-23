@@ -5,6 +5,7 @@ import { authed, getToken, onAuthChange, openSignIn, humanizeError } from "../..
 import { formatCents } from "../../lib/format";
 import { SellerOnboarding } from "../../components/SellerOnboarding";
 import { CatalogImport } from "../../components/CatalogImport";
+import { PhotoUpload } from "../../components/PhotoUpload";
 
 interface AuctionRow {
   id: string; name: string; status: string;
@@ -116,6 +117,7 @@ export default function Sell() {
   const [doses, setDoses] = useState("");
   const [start, setStart] = useState("");
   const [photoCredit, setPhotoCredit] = useState("");
+  const [photoKeys, setPhotoKeys] = useState<string[]>([]);
   const [epdText, setEpdText] = useState('{ "CED": 8, "BW": {"value": 1.2, "pct": 15}, "WW": 70, "Marb": {"value": 0.8, "pct": 4} }');
   async function addLot() {
     let epd: unknown;
@@ -125,7 +127,8 @@ export default function Sell() {
         method: "POST", body: JSON.stringify({
           lotNumber: Number(lotNo), category: "SEMEN", priceUnit: "DOSE",
           startingBidCents: dollarsToCents(start), bullName: bull || undefined,
-          dosesAvailable: doses ? Number(doses) : undefined, photoCredit: photoCredit || undefined, epd,
+          dosesAvailable: doses ? Number(doses) : undefined, photoCredit: photoCredit || undefined,
+          photos: photoKeys.length ? photoKeys : undefined, epd,
         }),
       });
       setMsg(`Lot created${res.epdWarnings.length ? ` · EPD warnings: ${res.epdWarnings.join("; ")}` : ""}`);
@@ -242,6 +245,7 @@ export default function Sell() {
           <label className="field"><span className="label">Doses</span><input className="input" value={doses} onChange={(e) => setDoses(e.target.value)} /></label>
           <label className="field"><span className="label">Opening bid $</span><input className="input" value={start} onChange={(e) => setStart(e.target.value)} placeholder="25.00" /></label>
           <label className="field"><span className="label">Photo credit</span><input className="input" value={photoCredit} onChange={(e) => setPhotoCredit(e.target.value)} placeholder="Photo: Jane Smith" /></label>
+          <PhotoUpload onUploaded={setPhotoKeys} />
         </div>
         <label className="field" style={{ marginBottom: 16 }}><span className="label">EPDs (JSON)</span>
           <textarea className="input" rows={3} value={epdText} onChange={(e) => setEpdText(e.target.value)} />
