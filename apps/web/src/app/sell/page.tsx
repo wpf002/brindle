@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { authed, getToken, onAuthChange, openSignIn, humanizeError } from "../../lib/session";
 import { formatCents } from "../../lib/format";
+import { SellerOnboarding } from "../../components/SellerOnboarding";
+import { CatalogImport } from "../../components/CatalogImport";
 
 interface AuctionRow {
   id: string; name: string; status: string;
@@ -167,6 +169,13 @@ export default function Sell() {
       )}
 
       {msg && <div className="statusmsg info" style={{ marginBottom: 18 }}>{msg}</div>}
+
+      <SellerOnboarding />
+
+      <CatalogImport
+        auctions={auctions.map((a) => ({ id: a.id, name: a.name }))}
+        onImported={() => void refresh()}
+      />
 
       <div className="card-form">
         <h2>Your story</h2>

@@ -5,6 +5,7 @@ import { formatCents, priceUnitLabel } from "../../../lib/format";
 import { BidBox } from "../../../components/BidBox";
 import { EpdTable } from "../../../components/EpdTable";
 import { Comparables } from "../../../components/Comparables";
+import { WatchButton } from "../../../components/WatchButton";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,29 @@ interface LotDetail {
   };
   registry: { code: string; name: string } | null;
   live: { currentPriceCents: string; highBidderId: string | null; bidIncrementCents: string; closed: boolean } | null;
+}
+
+// Per-lot metadata so a shared link previews as the actual animal, not a
+// generic site card.
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const data = (await getLot(params.id)) as LotDetail | null;
+  if (!data?.lot) return { title: "Lot not found — Brindle" };
+
+  const { lot } = data;
+  const name = lot.bullName ?? `Lot ${lot.lotNumber}`;
+  const seller = lot.auction.seller.businessName ?? lot.auction.seller.legalName;
+  const opening = formatCents(lot.startingBidCents) + priceUnitLabel(lot.priceUnit);
+  const description =
+    `${name} — ${lot.category} from ${seller}` +
+    (lot.bullRegId ? `, reg. ${lot.bullRegId}` : "") +
+    `. Opening at ${opening} in ${lot.auction.name}.`;
+
+  return {
+    title: `${name} — ${lot.auction.name} | Brindle`,
+    description,
+    openGraph: { title: `${name} — ${seller}`, description, type: "website" },
+    twitter: { card: "summary", title: `${name} — ${seller}`, description },
+  };
 }
 
 export default async function LotPage({ params }: { params: { id: string } }) {
@@ -48,7 +72,10 @@ export default async function LotPage({ params }: { params: { id: string } }) {
         <div>
           <div className="card-lotno">Lot {lot.lotNumber} · {lot.auction.name}</div>
           <div className="lot-head">
-            <h1>{lot.bullName ?? lot.category}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <h1>{lot.bullName ?? lot.category}</h1>
+              <WatchButton lotId={lot.id} />
+            </div>
             <div className="lot-sub">
               {lot.category}
               {lot.primaryBreed ? ` · ${lot.primaryBreed}` : ""} ·{" "}

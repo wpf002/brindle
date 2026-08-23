@@ -45,6 +45,26 @@ export async function marketRoutes(app: FastifyInstance) {
     },
   );
 
+  // Latest reported prices for the public market page. Returns every row from
+  // the most recent report date we hold, ordered high to low.
+  app.get("/market/latest", async () => {
+    const newest = await prisma.marketReport.findFirst({
+      orderBy: { reportDate: "desc" },
+      select: { reportDate: true },
+    });
+    if (!newest) return { rows: [], asOf: null };
+
+    const rows = await prisma.marketReport.findMany({
+      where: { reportDate: newest.reportDate },
+      orderBy: { avgCentsPerCwt: "desc" },
+      take: 100,
+    });
+    return {
+      asOf: newest.reportDate.toISOString().slice(0, 10),
+      rows: rows.map((r) => ({ ...r, reportDate: r.reportDate.toISOString().slice(0, 10) })),
+    };
+  });
+
   // Comparable-sale context for a class + weight — rendered at the bid box.
   app.get<{
     Querystring: { category?: string; weight?: string; region?: string; asOf?: string; head?: string };

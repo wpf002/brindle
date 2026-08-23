@@ -302,3 +302,95 @@ textarea.input { font-family: ui-monospace, monospace; font-size: 13px; resize: 
 .news-detail .dek { font-size: 17px; color: var(--ink-2); margin-bottom: 14px; }
 .news-detail .byline { font-size: 13px; color: var(--ink-3); padding-bottom: 26px; border-bottom: 1px solid var(--line); margin-bottom: 26px; }
 .news-body p { font-size: 16px; color: var(--ink-2); line-height: 1.75; margin: 0 0 20px; white-space: pre-line; }
+
+/* ---------- notifications ---------- */
+.bell { position: relative; font-size: 16px; line-height: 1; padding: 4px 6px; color: #e7d8ce; }
+.bell:hover { color: #fff; }
+.bell-dot { position: absolute; top: -2px; right: -4px; background: var(--gold); color: var(--maroon-deep);
+  font-size: 10px; font-weight: 700; min-width: 15px; height: 15px; border-radius: 999px;
+  display: grid; place-items: center; padding: 0 3px; }
+.notif-panel { position: absolute; right: 0; top: calc(100% + 10px); width: 340px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-lg); z-index: 200;
+  overflow: hidden; }
+.notif-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+  border-bottom: 1px solid var(--line-2); font-size: 14px; color: var(--ink); }
+.notif-list { list-style: none; margin: 0; padding: 0; max-height: 380px; overflow-y: auto; }
+.notif-list li { border-bottom: 1px solid var(--line-2); }
+.notif-list li:last-child { border-bottom: none; }
+.notif-list a, .notif-list div { display: block; padding: 12px 16px; }
+.notif-list a:hover { background: var(--surface-2); }
+.notif-list strong { display: block; font-size: 13.5px; color: var(--ink); margin-bottom: 2px; }
+.notif-list span { display: block; font-size: 12.5px; color: var(--ink-2); }
+.notif-list li.unread { border-left: 3px solid var(--rust); }
+
+/* ---------- onboarding checklist ---------- */
+.checklist { display: flex; flex-direction: column; gap: 10px; }
+.check-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--surface); }
+.check-row.done { background: var(--forest-wash); border-color: color-mix(in srgb, var(--forest) 25%, transparent); }
+.check-mark { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 auto;
+  font-size: 12px; font-weight: 700; background: var(--line-2); color: var(--ink-3); }
+.check-row.done .check-mark { background: var(--forest); color: #fff; }
+.check-body { flex: 1; }
+.check-body strong { display: block; font-size: 14.5px; margin-bottom: 2px; }
+.check-body span { font-size: 13px; color: var(--ink-2); }
+
+/* ---------- market page ---------- */
+.market-table { width: 100%; border-collapse: collapse; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.market-table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--ink-3); padding: 12px 14px; border-bottom: 1px solid var(--line); font-weight: 700; }
+.market-table td { padding: 12px 14px; border-bottom: 1px solid var(--line-2); font-size: 14px; }
+.market-table tr:last-child td { border-bottom: none; }
+.market-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.source-note { font-size: 12.5px; color: var(--ink-3); margin-top: 14px; }
+
+/* ---------- watchlist / catalog import ---------- */
+.watch-btn { background: none; border: none; cursor: pointer; font-size: 17px; line-height: 1; padding: 2px 4px; }
+.import-grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 13.5px; margin: 12px 0; }
+.import-grid dt { color: var(--ink-3); }
+.import-grid dd { margin: 0; }
+.row-errors { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; }
+.row-errors li { padding: 6px 10px; background: #f7e6e4; color: var(--danger); border-radius: 8px; margin-bottom: 6px; }
+
+/* ---------- accessibility ---------- */
+.skip-link { position: absolute; left: -9999px; top: 0; z-index: 300; background: var(--surface);
+  color: var(--ink); padding: 10px 16px; border-radius: 0 0 var(--radius) 0; font-weight: 600; }
+.skip-link:focus { left: 0; }
+
+/* A visible focus ring everywhere. The default outline disappears against the
+   oxblood chrome, so nav/footer get a light ring instead of the dark one. */
+:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; border-radius: 4px; }
+.nav :focus-visible, .footer :focus-visible, .ring-theater :focus-visible {
+  outline-color: #f0c896;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  .card:hover, .seller-card:hover { transform: none; }
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 780px) {
+  .wrap { padding: 0 16px; }
+  .hero { padding: 32px 0 22px; }
+  .hero h1 { font-size: 32px; }
+  .hero p { font-size: 15.5px; }
+  .hero-stats { gap: 24px; flex-wrap: wrap; }
+  .nav-inner { gap: 12px; height: auto; min-height: 58px; flex-wrap: wrap; padding: 10px 16px; }
+  .nav-links { order: 3; width: 100%; overflow-x: auto; gap: 2px; padding-bottom: 2px; }
+  .nav-link { padding: 6px 10px; font-size: 13.5px; white-space: nowrap; }
+  .nav-spacer { display: none; }
+  .nav-user { margin-left: auto; gap: 8px; }
+  .nav-user .nav-link { display: none; } /* Watchlist lives in the row below on mobile */
+  .chip { display: none; }
+  .lot-head h1, .detail h1 { font-size: 28px; }
+  .panel { position: static; } /* sticky bid box would eat a phone screen */
+  .story-hero { padding: 34px 0 26px; }
+  .story-hero h1 { font-size: 30px; }
+  .news-detail h1 { font-size: 28px; }
+  .epd-row { grid-template-columns: 92px 48px 1fr 44px; gap: 8px; padding: 10px 12px; }
+  .epd-row .t small { display: none; } /* trait code alone at phone width */
+  .notif-panel { width: min(340px, calc(100vw - 32px)); }
+  .footer-cols { gap: 28px; }
+  .market-table { display: block; overflow-x: auto; white-space: nowrap; }
+}

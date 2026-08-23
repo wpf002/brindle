@@ -2,28 +2,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getSession, devSignIn, clearToken, onAuthChange, type Session } from "../lib/session";
+import {
+  getSession, login, register, clearToken, onAuthChange, onOpenSignIn, humanizeError, type Session,
+} from "../lib/session";
+import { NotificationBell } from "./NotificationBell";
+
+type Mode = "signin" | "register";
 
 export function Nav() {
   const path = usePathname() ?? "/";
   const [session, setSession] = useState<Session | null>(null);
-  const [modal, setModal] = useState(false);
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [modal, setModal] = useState<Mode | null>(null);
 
   const refresh = () => void getSession().then(setSession);
   useEffect(() => {
     refresh();
-    return onAuthChange(refresh);
+    const offAuth = onAuthChange(refresh);
+    const offOpen = onOpenSignIn(() => setModal("signin"));
+    return () => { offAuth(); offOpen(); };
   }, []);
-
-  async function signIn() {
-    if (!email.trim()) return;
-    setBusy(true);
-    const ok = await devSignIn(email.trim());
-    setBusy(false);
-    if (ok) { setModal(false); setEmail(""); }
-  }
 
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
@@ -34,6 +31,7 @@ export function Nav() {
           <Link href="/" className="brand">Brindle<span className="dot">.</span></Link>
           <div className="nav-links">
             <Link href="/" className={`nav-link ${isActive("/") ? "active" : ""}`}>Auctions</Link>
+            <Link href="/market" className={`nav-link ${isActive("/market") ? "active" : ""}`}>Market</Link>
             <Link href="/news" className={`nav-link ${isActive("/news") ? "active" : ""}`}>News</Link>
             <Link href="/sell" className={`nav-link ${isActive("/sell") ? "active" : ""}`}>Sell</Link>
           </div>
@@ -41,42 +39,132 @@ export function Nav() {
           <div className="nav-user">
             {session ? (
               <>
+                <Link href="/watchlist" className="nav-link">Watchlist</Link>
+                <NotificationBell />
                 <span className="chip">
-                  {session.buyerNumber && <span className="num">{session.buyerNumber}</span>}
-                  {session.creditApproved && <span className="pill live" style={{ padding: "1px 7px" }}>Approved</span>}
+                  {session.buyerNumber
+                    ? <span className="num">{session.buyerNumber}</span>
+                    : <span className="num">Credit pending</span>}
+                  {session.creditApproved && (
+                    <span className="pill live" style={{ padding: "1px 7px" }}>Approved</span>
+                  )}
                 </span>
-                <span className="avatar">{session.userId.slice(0, 1).toUpperCase()}</span>
                 <button className="btn-link" onClick={() => clearToken()}>Sign out</button>
               </>
             ) : (
-              <button className="btn btn-primary btn-sm" onClick={() => setModal(true)}>Sign in</button>
+              <>
+                <button className="btn-link" onClick={() => setModal("signin")}>Sign in</button>
+                <button className="btn btn-primary btn-sm" onClick={() => setModal("register")}>
+                  Create account
+                </button>
+              </>
             )}
           </div>
         </div>
       </nav>
 
-      {modal && (
-        <div
-          onClick={() => setModal(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(33,29,24,.4)", zIndex: 100,
-            display: "grid", placeItems: "center", padding: 20 }}
-        >
-          <div className="signin-card" style={{ margin: 0, width: 380, maxWidth: "100%" }} onClick={(e) => e.stopPropagation()}>
-            <div>
-              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22 }}>Sign in to Brindle</h2>
-              <p className="muted" style={{ fontSize: 13.5, margin: "4px 0 0" }}>
-                No password needed. We&rsquo;ll set up your account and buyer credit instantly.
-              </p>
-            </div>
-            <input className="input" placeholder="you@ranch.com" value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && signIn()} autoFocus />
-            <button className="btn btn-primary btn-lg" onClick={signIn} disabled={busy || !email.trim()}>
-              {busy ? "Signing in…" : "Continue"}
-            </button>
-          </div>
-        </div>
-      )}
+      {modal && <AuthModal mode={modal} onMode={setModal} onClose={() => setModal(null)} />}
     </>
+  );
+}
+
+function AuthModal({
+  mode, onMode, onClose,
+}: { mode: Mode; onMode: (m: Mode) => void; onClose: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [legalName, setLegalName] = useState("");
+  const [accountType, setAccountType] = useState("BUYER");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    setBusy(true);
+    setError("");
+    try {
+      if (mode === "signin") {
+        await login(email.trim(), password);
+      } else {
+        await register({ email: email.trim(), password, legalName: legalName.trim(), type: accountType });
+      }
+      onClose();
+    } catch (e) {
+      setError(humanizeError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const canSubmit = mode === "signin"
+    ? email.trim() && password
+    : email.trim() && password && legalName.trim();
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(33,29,24,.45)", zIndex: 100,
+        display: "grid", placeItems: "center", padding: 20 }}
+    >
+      <div
+        className="signin-card"
+        style={{ margin: 0, width: 400, maxWidth: "100%" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22 }}>
+            {mode === "signin" ? "Sign in to Brindle" : "Create your Brindle account"}
+          </h2>
+          <p className="muted" style={{ fontSize: 13.5, margin: "4px 0 0" }}>
+            {mode === "signin"
+              ? "Welcome back."
+              : "Buyers need credit approval before bidding — we'll walk you through it after you sign up."}
+          </p>
+        </div>
+
+        {mode === "register" && (
+          <>
+            <label className="field">
+              <span className="label">Name or ranch name</span>
+              <input className="input" value={legalName} onChange={(e) => setLegalName(e.target.value)}
+                placeholder="Willow Creek Genetics" autoFocus />
+            </label>
+            <label className="field">
+              <span className="label">I&rsquo;m here to</span>
+              <select className="input" value={accountType} onChange={(e) => setAccountType(e.target.value)}>
+                <option value="BUYER">Buy cattle and genetics</option>
+                <option value="SELLER_BREEDER">Sell — run my own sales</option>
+                <option value="GENETICS_PROVIDER">Sell semen and embryos</option>
+              </select>
+            </label>
+          </>
+        )}
+
+        <label className="field">
+          <span className="label">Email</span>
+          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@ranch.com" autoFocus={mode === "signin"} />
+        </label>
+        <label className="field">
+          <span className="label">Password</span>
+          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+            placeholder={mode === "register" ? "At least 8 characters" : ""}
+            onKeyDown={(e) => e.key === "Enter" && canSubmit && submit()} />
+        </label>
+
+        {error && <div className="statusmsg rejected">{error}</div>}
+
+        <button className="btn btn-primary btn-lg" onClick={submit} disabled={busy || !canSubmit}>
+          {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
+        </button>
+
+        <p className="muted" style={{ fontSize: 13, textAlign: "center", margin: 0 }}>
+          {mode === "signin" ? (
+            <>New to Brindle? <button className="btn-link" onClick={() => onMode("register")}>Create an account</button></>
+          ) : (
+            <>Already have an account? <button className="btn-link" onClick={() => onMode("signin")}>Sign in</button></>
+          )}
+        </p>
+      </div>
+    </div>
   );
 }

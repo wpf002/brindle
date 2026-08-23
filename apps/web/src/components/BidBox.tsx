@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { wsBase } from "../lib/api";
-import { getToken, onAuthChange } from "../lib/session";
+import { getToken, getSession, onAuthChange, openSignIn } from "../lib/session";
 import { formatCents } from "../lib/format";
 
 function dollarsToCents(input: string): bigint {
@@ -27,10 +27,18 @@ export function BidBox({ auctionId, lotId, initialPriceCents, incrementCents, un
   const [status, setStatus] = useState<Status>({ kind: "idle", text: "" });
   const [maxBid, setMaxBid] = useState("");
   const [signedIn, setSignedIn] = useState(false);
+  // Credit approval is enforced server-side by the sequencer regardless; this
+  // just avoids offering a bid button that's guaranteed to bounce.
+  const [creditApproved, setCreditApproved] = useState(false);
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const sync = () => setSignedIn(Boolean(getToken()));
+    const sync = () => {
+      const has = Boolean(getToken());
+      setSignedIn(has);
+      if (!has) { setCreditApproved(false); return; }
+      void getSession().then((s) => setCreditApproved(Boolean(s?.creditApproved)));
+    };
     sync();
     return onAuthChange(sync);
   }, []);
@@ -82,7 +90,19 @@ export function BidBox({ auctionId, lotId, initialPriceCents, incrementCents, un
         </div>
       </div>
       <div className="panel-body">
-        {signedIn ? (
+        {!signedIn ? (
+          <button className="btn btn-primary btn-lg" onClick={openSignIn}>Sign in to bid</button>
+        ) : !creditApproved ? (
+          <>
+            <button className="btn btn-primary btn-lg" disabled>Bidding locked</button>
+            <div className="watchline">
+              <span>
+                Your buyer credit is still pending. We&rsquo;ll email you the moment
+                it&rsquo;s approved — then you can bid on any seller&rsquo;s sale.
+              </span>
+            </div>
+          </>
+        ) : (
           <>
             <button className="btn btn-primary btn-lg" onClick={placeBid}>
               Bid {formatCents(nextMin)}
@@ -94,22 +114,10 @@ export function BidBox({ auctionId, lotId, initialPriceCents, incrementCents, un
             </div>
             <div className="watchline"><span>Proxy bidding — we bid up to your max</span></div>
           </>
-        ) : (
-          <SignInInline />
         )}
         {status.text && <div className={`statusmsg ${status.kind}`}>{status.text}</div>}
       </div>
     </aside>
-  );
-}
-
-function SignInInline() {
-  return (
-    <p className="muted" style={{ fontSize: 14 }}>
-      <button className="btn btn-primary btn-lg" onClick={() => document.querySelector<HTMLButtonElement>(".nav-user .btn-primary")?.click()}>
-        Sign in to bid
-      </button>
-    </p>
   );
 }
 
