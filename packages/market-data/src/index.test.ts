@@ -4,6 +4,7 @@ import {
   estimateFromComparables,
   basisCentsPerCwt,
   normalizeAmsRow,
+  normalizeDataMartRow,
   type ComparableSale,
 } from "./index.js";
 
@@ -78,5 +79,48 @@ describe("normalizeAmsRow", () => {
     expect(c.category).toBe("STEERS Medium/Large 1");
     expect(c.weightedAvgCentsPerCwt).toBe(28_500);
     expect(c.weightBandLbs).toEqual([500, 600]);
+  });
+});
+
+describe("normalizeDataMartRow", () => {
+  // Field shape and values copied verbatim from a live response of
+  // https://mpr.datamart.ams.usda.gov/services/v1.1/reports/2466/detail
+  const liveRow = {
+    report_date: "08/21/2026",
+    class_description: "ALL BEEF TYPE",
+    selling_basis_description: "DRESSED DELIVERED",
+    market_location_state: "MO",
+    weight_range_low: "839",
+    weight_range_high: "1,064",
+    weighted_avg_price: "355.27",
+    head_count: "3,034",
+    slug_id: "2466",
+  };
+
+  it("normalizes a real DataMart detail row", () => {
+    const c = normalizeDataMartRow(liveRow)!;
+    expect(c.reportDate).toBe("2026-08-21"); // MM/DD/YYYY -> ISO
+    expect(c.weightedAvgCentsPerCwt).toBe(35_527);
+    expect(c.weightBandLbs).toEqual([839, 1064]); // comma-grouped parsed
+    expect(c.headCount).toBe(3034);
+    expect(c.category).toBe("ALL BEEF TYPE — DRESSED DELIVERED");
+    expect(c.source).toBe("DATAMART-2466");
+  });
+
+  it("returns null for rows with no reported price (very common in this feed)", () => {
+    expect(
+      normalizeDataMartRow({
+        ...liveRow,
+        head_count: null,
+        weight_range_low: null,
+        weight_range_high: null,
+        weighted_avg_price: null,
+      }),
+    ).toBeNull();
+  });
+
+  it("falls back to US when no market state is given", () => {
+    const c = normalizeDataMartRow({ ...liveRow, market_location_state: null })!;
+    expect(c.region).toBe("US");
   });
 });

@@ -22,6 +22,7 @@ export class RedisBroadcaster implements Broadcaster {
 interface RoomLoop {
   running: boolean;
   streamConn: Redis;
+  worker: SequencerWorker;
 }
 
 // Owns the lifecycle of the per-room sequencer workers. Exactly one drain loop
@@ -48,17 +49,26 @@ export class SequencerManager {
     if (this.loops.has(roomId)) return;
 
     const streamConn = new Redis(this.redisUrl); // dedicated: XREAD BLOCK holds it
-    const loop: RoomLoop = { running: true, streamConn };
-    this.loops.set(roomId, loop);
-
     const worker = new SequencerWorker({
       stream: new RedisBidStream(streamConn),
       store: this.store,
       broadcaster: this.broadcaster,
       blockMs: this.blockMs,
     });
+    const loop: RoomLoop = { running: true, streamConn, worker };
+    this.loops.set(roomId, loop);
 
     void this.drainForever(roomId, worker, loop);
+  }
+
+  /**
+   * Force-evict a lot from its room's live worker cache, if that worker is
+   * running. Call this right after flipping the lot's stored status away from
+   * ACTIVE (e.g. a time-based close sweep) so an already-warm worker can't keep
+   * accepting bids the database no longer considers open.
+   */
+  closeLot(roomId: string, lotId: string): void {
+    this.loops.get(roomId)?.worker.forceClose(lotId);
   }
 
   private async drainForever(

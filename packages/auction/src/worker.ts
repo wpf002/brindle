@@ -94,6 +94,19 @@ export class SequencerWorker {
     this.running = false;
   }
 
+  /**
+   * Force a lot closed in this worker's in-memory cache (used by a time-based
+   * sweep that closed the lot in the store out-of-band). A worker only reloads a
+   * lot from the store on its first touch and never again, so an external status
+   * change needs this to take effect before the next stray bid arrives. A no-op
+   * if the worker hasn't touched this lot yet — the next load from the store
+   * will already see the closed state.
+   */
+  forceClose(lotId: string): void {
+    const cached = this.states.get(lotId);
+    if (cached) this.states.set(lotId, { ...cached, closed: true });
+  }
+
   private async lotState(lotId: string): Promise<LotState | null> {
     const cached = this.states.get(lotId);
     if (cached) return cached;

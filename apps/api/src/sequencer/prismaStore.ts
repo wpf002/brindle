@@ -3,6 +3,7 @@ import {
   Prisma,
   BidKind,
   LotStatus,
+  NotificationType,
   type PriceUnit,
 } from "@brindle/db";
 import {
@@ -12,6 +13,7 @@ import {
   type LotState,
   type LotStateStore,
 } from "@brindle/auction";
+import { notify, lotContext } from "../notify.js";
 
 // Durable lot state backed by Postgres. The bid log is authoritative: current
 // state is reconstructed by replaying a lot's accepted bids through the same pure
@@ -70,6 +72,16 @@ export class PrismaLotStateStore implements LotStateStore {
   async persistAccepted(state: LotState, accepted: AcceptedBid): Promise<void> {
     const priceUnit =
       this.priceUnits.get(state.lotId) ?? (await this.lookupPriceUnit(state.lotId));
+
+    // Read the outgoing leader BEFORE inserting the new bid, so we know who to
+    // notify. Reading first (rather than trusting `accepted.leadChanged`) is
+    // also more robust: it's the literal definition of "the lead changed."
+    const previousLeader = await prisma.bid.findFirst({
+      where: { lotId: state.lotId },
+      orderBy: { seq: "desc" },
+      select: { bidderId: true },
+    });
+
     try {
       await prisma.bid.create({
         data: {
@@ -87,6 +99,20 @@ export class PrismaLotStateStore implements LotStateStore {
       // Idempotent redelivery: this stream entry (or seq) is already persisted.
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return;
       throw e;
+    }
+
+    const outbidUserId = previousLeader?.bidderId;
+    if (outbidUserId && outbidUserId !== state.highBidderId) {
+      void lotContext(state.lotId).then((ctx) => {
+        if (!ctx) return;
+        void notify(
+          outbidUserId,
+          NotificationType.OUTBID,
+          `You've been outbid on ${ctx.label}`,
+          `Someone raised the bid on ${ctx.label} in ${ctx.auctionName}. Place a new bid to stay in it.`,
+          ctx.href,
+        );
+      });
     }
   }
 

@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import websocket from "@fastify/websocket";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import { authPlugin } from "./auth.js";
 import { SequencerManager } from "./sequencer/manager.js";
 import { PrismaLotStateStore } from "./sequencer/prismaStore.js";
@@ -20,8 +22,16 @@ import { trustRoutes } from "./routes/trust.js";
 import { publicRoutes } from "./routes/public.js";
 import { sellerRoutes } from "./routes/sellers.js";
 import { newsRoutes } from "./routes/news.js";
+import { stripeConnectRoutes } from "./routes/stripeConnect.js";
+import { identityRoutes } from "./routes/identity.js";
+import { watchlistRoutes } from "./routes/watchlist.js";
+import { notificationRoutes } from "./routes/notifications.js";
+import { deliveryRoutes } from "./routes/delivery.js";
+import { catalogImportRoutes } from "./routes/catalogImport.js";
+import { adminRoutes } from "./routes/admin.js";
 import { bidsRoutes } from "./routes/bids.js";
 import { ringRoutes } from "./routes/ring.js";
+import { closeExpiredLots } from "./lotCloser.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -30,16 +40,40 @@ declare module "fastify" {
   }
 }
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: true, trustProxy: true });
 
 const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
 const sequencer = new SequencerManager(redisUrl, new PrismaLotStateStore());
 const ring = new RingManager(redisUrl, new PrismaRingStore());
 app.decorate("sequencer", sequencer);
 app.decorate("ring", ring);
+
+// Timed lots don't close themselves — soft-close extension lives in the pure
+// resolver, but a lot that simply runs out the clock with no further bids needs
+// a sweep to notice. Runs in-process; a multi-instance deploy should move this
+// behind a leader election or an external scheduler so it runs exactly once.
+const CLOSE_SWEEP_MS = Number(process.env.LOT_CLOSE_SWEEP_MS ?? 30_000);
+const closeSweep = setInterval(() => {
+  void closeExpiredLots(sequencer).catch((err) => app.log.error({ err }, "lot close sweep failed"));
+}, CLOSE_SWEEP_MS);
+closeSweep.unref(); // never hold the process open on this alone
+
 app.addHook("onClose", async () => {
+  clearInterval(closeSweep);
   await sequencer.shutdown();
   await ring.shutdown();
+});
+
+// Security headers. CSP is disabled — this is a pure JSON/WS API, no HTML
+// responses to protect, and a default CSP breaks the WS upgrade in some proxies.
+await app.register(helmet, { contentSecurityPolicy: false });
+
+// Generous global ceiling against abuse/scraping; auth-sensitive routes below
+// get their own tighter limits.
+await app.register(rateLimit, {
+  global: true,
+  max: 300,
+  timeWindow: "1 minute",
 });
 
 await app.register(cors, {
@@ -62,6 +96,13 @@ await app.register(trustRoutes);
 await app.register(publicRoutes);
 await app.register(sellerRoutes);
 await app.register(newsRoutes);
+await app.register(stripeConnectRoutes);
+await app.register(identityRoutes);
+await app.register(watchlistRoutes);
+await app.register(notificationRoutes);
+await app.register(deliveryRoutes);
+await app.register(catalogImportRoutes);
+await app.register(adminRoutes);
 await app.register(bidsRoutes);
 await app.register(ringRoutes);
 

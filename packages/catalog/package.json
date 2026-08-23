@@ -1,0 +1,9 @@
+{
+  "name": "@brindle/catalog",
+  "version": "0.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": { "lint": "eslint src", "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": { "@brindle/genetics": "workspace:*" },
+  "devDependencies": { "typescript": "^5.5.0", "vitest": "^2.0.0" }
+}

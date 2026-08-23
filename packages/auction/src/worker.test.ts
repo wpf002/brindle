@@ -186,4 +186,25 @@ describe("SequencerWorker — durable single-writer resolution", () => {
     await worker.drain("auction-1", cursor); // no new entries
     expect(store.log).toHaveLength(1); // not double-applied
   });
+
+  it("forceClose makes a warm-cached lot reject further bids immediately", async () => {
+    const { stream, broadcaster, worker } = harness([seedLot()]);
+
+    // Touch the lot once so it's cached in the worker's memory.
+    await stream.add("auction-1", bid({ bidderId: "A", amountCents: 1_000n }));
+    const cursor = await worker.drain("auction-1", "0");
+
+    worker.forceClose("lot-1");
+
+    await stream.add("auction-1", bid({ bidderId: "B", amountCents: 2_000n }));
+    await worker.drain("auction-1", cursor);
+
+    const last = broadcaster.events.at(-1);
+    expect(last).toMatchObject({ ok: false, reason: "LOT_CLOSED" });
+  });
+
+  it("forceClose on a lot the worker hasn't touched yet is a harmless no-op", () => {
+    const { worker } = harness([seedLot()]);
+    expect(() => worker.forceClose("never-touched")).not.toThrow();
+  });
 });

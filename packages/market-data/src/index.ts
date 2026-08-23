@@ -126,3 +126,56 @@ export function normalizeAmsRow(row: AmsRow): ComparableSale {
 export interface MarketDataSource {
   comparables(q: ComparablesQuery): Promise<ComparableSale[]>;
 }
+
+// ──────────────────────────────────────────────────────────────
+// USDA AMS Livestock Mandatory Price Reporting (LMPR) DataMart — the ONE
+// AMS cattle API that's genuinely free and keyless (mpr.datamart.ams.usda.gov).
+// It's packer-reported fed/slaughter cattle, not sale-barn feeder-cattle-by-
+// weight-class data (that lives behind the separate, key-gated MyMarketNews
+// API) — but its "Detail" report rows carry real weight bands and a real
+// weighted-average price, so they normalize cleanly into the same
+// ComparableSale shape. Region here is a market/office location, not a state
+// livestock-auction region, and category reflects a slaughter cattle class —
+// callers should treat DataMart comps as fed-cattle market context, not a
+// substitute for feeder-calf sale-barn comparables.
+export interface DataMartDetailRow {
+  report_date: string; // "MM/DD/YYYY"
+  class_description: string;
+  selling_basis_description: string;
+  market_location_state: string | null;
+  weight_range_low: string | null; // comma-grouped, e.g. "1,064"
+  weight_range_high: string | null;
+  weighted_avg_price: string | null; // dollars, e.g. "355.27"
+  head_count: string | null;
+  slug_id: string;
+}
+
+function usDateToIso(mmddyyyy: string): string {
+  const [m, d, y] = mmddyyyy.split("/");
+  return `${y}-${m?.padStart(2, "0")}-${d?.padStart(2, "0")}`;
+}
+
+function parseGroupedNumber(v: string | null): number | null {
+  if (v == null) return null;
+  const n = Number(v.replace(/,/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Normalize one DataMart detail row; null if the row has no reported price. */
+export function normalizeDataMartRow(row: DataMartDetailRow): ComparableSale | null {
+  const avgPrice = parseGroupedNumber(row.weighted_avg_price);
+  const low = parseGroupedNumber(row.weight_range_low);
+  const high = parseGroupedNumber(row.weight_range_high);
+  const head = parseGroupedNumber(row.head_count);
+  if (avgPrice == null || low == null || high == null || head == null) return null;
+
+  return {
+    reportDate: usDateToIso(row.report_date),
+    region: row.market_location_state ?? "US",
+    category: `${row.class_description} — ${row.selling_basis_description}`,
+    weightBandLbs: [low, high],
+    weightedAvgCentsPerCwt: Math.round(avgPrice * 100),
+    headCount: head,
+    source: `DATAMART-${row.slug_id}`,
+  };
+}

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { prisma, AuctionStatus } from "@brindle/db";
+import { prisma, AuctionStatus, CreditStatus } from "@brindle/db";
 import type { IncomingBid } from "@brindle/auction";
 import { MessageGate } from "../gateway/messageGate.js";
 
@@ -17,6 +17,10 @@ export async function bidsRoutes(app: FastifyInstance) {
       // Buffer inbound messages until async setup completes (see MessageGate) so a
       // bid the client fires immediately on open isn't dropped during setup.
       let sellerId = "";
+      // Live at connect time, not the JWT's baked-in claim — a session can be up
+      // to 12h old, and credit approval/suspension must take effect immediately,
+      // not after the buyer's token happens to expire.
+      let creditApproved = false;
       let unsubscribe: (() => Promise<void>) | null = null;
       const gate = new MessageGate<Buffer>();
 
@@ -37,7 +41,7 @@ export async function bidsRoutes(app: FastifyInstance) {
           bidderId: req.session!.userId,
           amountCents: BigInt(msg.amountCents),
           proxyMaxCents: msg.proxyMaxCents != null ? BigInt(msg.proxyMaxCents) : undefined,
-          creditApproved: req.session!.creditApproved,
+          creditApproved,
           sellerId,
           receivedAt: Date.now(),
         };
@@ -56,10 +60,10 @@ export async function bidsRoutes(app: FastifyInstance) {
           socket.close();
           return;
         }
-        const auction = await prisma.auction.findUnique({
-          where: { id: roomId },
-          select: { sellerId: true, status: true },
-        });
+        const [auction, buyer] = await Promise.all([
+          prisma.auction.findUnique({ where: { id: roomId }, select: { sellerId: true, status: true } }),
+          prisma.user.findUnique({ where: { id: req.session.userId }, select: { creditStatus: true } }),
+        ]);
         if (
           !auction ||
           auction.status === AuctionStatus.CLOSED ||
@@ -70,6 +74,7 @@ export async function bidsRoutes(app: FastifyInstance) {
           return;
         }
         sellerId = auction.sellerId;
+        creditApproved = buyer?.creditStatus === CreditStatus.APPROVED;
 
         unsubscribe = await app.sequencer.subscribe(roomId, (event) => {
           socket.send(

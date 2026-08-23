@@ -118,6 +118,36 @@ enum DisputeClaim {
   GENETICS_QUALITY
 }
 
+enum NotificationType {
+  OUTBID
+  WINNING
+  LOT_WON
+  LOT_SOLD
+  ENDING_SOON
+  PAYMENT_HELD
+  DISPUTE_UPDATE
+  SYSTEM
+}
+
+enum CatalogImportStatus {
+  PARSED
+  COMMITTED
+  FAILED
+}
+
+enum DeliveryMethod {
+  PICKUP
+  SHIPPING
+  STORAGE_FACILITY_TRANSFER
+}
+
+enum DeliveryStatus {
+  PENDING
+  SCHEDULED
+  IN_TRANSIT
+  DELIVERED
+}
+
 // ──────────────────────────────────────────────────────────────
 // Models
 // ──────────────────────────────────────────────────────────────
@@ -134,9 +164,15 @@ model User {
   creditStatus     CreditStatus @default(PENDING)
   creditLimitCents BigInt?
   stripeAccountId  String?
+  stripeOnboardedAt DateTime?   // Connect Express onboarding completed (charges_enabled)
   idVerifiedAt     DateTime?
+  identityRef      String?      // provider inquiry/session id (Persona, Stripe Identity)
   sellerVerified   Boolean      @default(false) // verified-seller badge
   createdAt        DateTime     @default(now())
+
+  // ── credentials (real auth) ──
+  passwordHash     String?      // scrypt "salt:hash" hex; null = never set a password (dev-provisioned)
+  emailVerifiedAt  DateTime?
 
   // ── seller story / "behind the brand" profile ──
   title            String?      // e.g. "Owner & General Manager"
@@ -147,6 +183,9 @@ model User {
   auctions         Auction[]    @relation("SellerAuctions")
   bids             Bid[]
   operations       SellerOperation[]
+  watchlist        Watchlist[]
+  notifications    Notification[]
+  catalogImports   CatalogImport[]
 }
 
 // A seller's individual ranch properties/divisions — the multi-location story
@@ -182,6 +221,7 @@ model Auction {
   createdAt       DateTime       @default(now())
 
   lots            Lot[]
+  catalogImports  CatalogImport[]
 
   @@index([status, startsAt])
 }
@@ -233,8 +273,75 @@ model Lot {
   contract         Contract?
   payment          Payment?
   disputes         Dispute[]
+  watchedBy        Watchlist[]
+  delivery         Delivery?
 
   @@unique([auctionId, lotNumber])
+}
+
+// A buyer's saved lots — surfaced on their watchlist page and used to target
+// outbid/ending-soon notifications.
+model Watchlist {
+  id        String   @id @default(uuid())
+  buyerId   String
+  buyer     User     @relation(fields: [buyerId], references: [id])
+  lotId     String
+  lot       Lot      @relation(fields: [lotId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([buyerId, lotId])
+  @@index([buyerId])
+}
+
+// In-app notifications (outbid, won, sold, ending soon, dispute updates).
+// Delivery is in-app today; `href` deep-links to the relevant page. Email/SMS
+// fan-out is a pluggable adapter (see notify.ts) that no-ops without a real
+// provider key configured.
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+// A bulk catalog upload (CSV/XLSX) a seller ran to create lots in one shot —
+// the record of what was parsed, what was committed, and any per-row errors.
+model CatalogImport {
+  id           String               @id @default(uuid())
+  sellerId     String
+  seller       User                 @relation(fields: [sellerId], references: [id])
+  auctionId    String?
+  auction      Auction?             @relation(fields: [auctionId], references: [id])
+  filename     String
+  status       CatalogImportStatus  @default(PARSED)
+  rowCount     Int                  @default(0)
+  createdCount Int                  @default(0)
+  errorLog     Json?                // [{row, message}]
+  createdAt    DateTime             @default(now())
+}
+
+// Post-sale logistics for a won lot — pickup/shipping contact and status,
+// shared between buyer and seller ("shipping-coordination handoff").
+model Delivery {
+  id           String         @id @default(uuid())
+  lotId        String         @unique
+  lot          Lot            @relation(fields: [lotId], references: [id])
+  method       DeliveryMethod @default(PICKUP)
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  address      String?
+  status       DeliveryStatus @default(PENDING)
+  notes        String?
+  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime       @default(now())
 }
 
 model Bid {
