@@ -4,7 +4,7 @@ import { formatCents } from "../../lib/format";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Cattle market prices — Brindle",
+  title: "Cattle market prices",
   description: "Live USDA-reported cattle prices, updated from AMS Livestock Mandatory Price Reporting.",
 };
 

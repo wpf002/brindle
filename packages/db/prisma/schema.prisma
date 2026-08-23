@@ -148,6 +148,19 @@ enum DeliveryStatus {
   DELIVERED
 }
 
+// Back-office roles, replacing the single shared ADMIN_API_TOKEN. Least
+// privilege: most staff never need to touch money.
+enum AdminRole {
+  SUPPORT // read-only: see queues, users, disputes
+  OPERATOR // + approve/suspend credit, resolve disputes, sync market data
+  OWNER // + manage other admins
+}
+
+enum TokenPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
 // ──────────────────────────────────────────────────────────────
 // Models
 // ──────────────────────────────────────────────────────────────
@@ -174,6 +187,19 @@ model User {
   passwordHash     String?      // scrypt "salt:hash" hex; null = never set a password (dev-provisioned)
   emailVerifiedAt  DateTime?
 
+  // ── brute-force lockout (per account, so a distributed attacker can't just
+  //    rotate IPs past the per-IP rate limit) ──
+  failedLoginCount Int          @default(0)
+  lockedUntil      DateTime?
+
+  // ── two-factor (TOTP) ──
+  totpSecret       String?      // base32; presence alone does not mean enabled
+  totpEnabledAt    DateTime?
+  totpRecoveryHash String?      // scrypt hash of a single-use recovery code
+
+  // ── back-office access (null for ordinary users) ──
+  adminRole        AdminRole?
+
   // ── seller story / "behind the brand" profile ──
   title            String?      // e.g. "Owner & General Manager"
   bio              String?
@@ -186,6 +212,62 @@ model User {
   watchlist        Watchlist[]
   notifications    Notification[]
   catalogImports   CatalogImport[]
+  sessions         Session[]
+  authTokens       AuthToken[]
+  auditEntries     AuditLog[]   @relation("AuditActor")
+}
+
+// Server-side session records, so a token can actually be revoked. The JWT
+// carries only this row's id; every request re-checks that the row still
+// exists and hasn't been revoked or expired. Signing out, a password change,
+// or an admin suspension all take effect immediately rather than waiting out
+// the token's clock.
+model Session {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastSeenAt DateTime  @default(now())
+  userAgent  String?
+  ip         String?
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+// Single-use, hashed, expiring tokens for email verification and password
+// reset. Only the hash is stored — a database leak doesn't hand over live
+// links.
+model AuthToken {
+  id        String       @id @default(uuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   TokenPurpose
+  tokenHash String       @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([userId, purpose])
+}
+
+// Append-only record of privileged back-office actions: who did what, to whom,
+// from where. The shared-secret admin token had no such trail.
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id])
+  action     String   // "credit.approve", "dispute.resolve", "admin.grant", …
+  targetType String?  // "user", "lot", "dispute"
+  targetId   String?
+  detail     Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
 }
 
 // A seller's individual ranch properties/divisions — the multi-location story

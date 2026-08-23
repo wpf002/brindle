@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { authed, getToken, onAuthChange, openSignIn } from "../../lib/session";
+import { authed, isSignedIn, onAuthChange, openSignIn } from "../../lib/session";
 import { formatCents, priceUnitLabel } from "../../lib/format";
 
 interface WatchLot {
@@ -23,7 +23,7 @@ export default function WatchlistPage() {
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
-    if (!getToken()) { setSignedIn(false); setLoaded(true); return; }
+    if (!(await isSignedIn())) { setSignedIn(false); setLoaded(true); return; }
     setSignedIn(true);
     try {
       const r = await authed<{ lots: WatchLot[] }>("/watchlist");

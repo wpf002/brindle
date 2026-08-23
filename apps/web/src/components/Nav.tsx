@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  getSession, login, register, clearToken, onAuthChange, onOpenSignIn, humanizeError, type Session,
+  getSession, login, register, signOut, onAuthChange, onOpenSignIn, humanizeError, type Session,
 } from "../lib/session";
 import { NotificationBell } from "./NotificationBell";
 
@@ -49,7 +49,8 @@ export function Nav() {
                     <span className="pill live" style={{ padding: "1px 7px" }}>Approved</span>
                   )}
                 </span>
-                <button className="btn-link" onClick={() => clearToken()}>Sign out</button>
+                <Link href="/account" className="nav-link">Account</Link>
+                <button className="btn-link" onClick={() => void signOut()}>Sign out</button>
               </>
             ) : (
               <>
@@ -77,27 +78,38 @@ function AuthModal({
   const [accountType, setAccountType] = useState("BUYER");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // The API answers TOTP_REQUIRED when 2FA is on — a prompt, not a failure.
+  // We keep the password in state and re-submit it with the code.
+  const [totp, setTotp] = useState("");
+  const [needsTotp, setNeedsTotp] = useState(false);
 
   async function submit() {
     setBusy(true);
     setError("");
     try {
       if (mode === "signin") {
-        await login(email.trim(), password);
+        await login(email.trim(), password, totp.trim() || undefined);
       } else {
         await register({ email: email.trim(), password, legalName: legalName.trim(), type: accountType });
       }
       onClose();
     } catch (e) {
-      setError(humanizeError(e));
+      const code = e instanceof Error ? e.message : "";
+      if (code === "TOTP_REQUIRED") {
+        setNeedsTotp(true);
+        setError(""); // asking for a second factor isn't an error to shout about
+      } else {
+        if (code === "INVALID_TOTP") setTotp("");
+        setError(humanizeError(e));
+      }
     } finally {
       setBusy(false);
     }
   }
 
   const canSubmit = mode === "signin"
-    ? email.trim() && password
-    : email.trim() && password && legalName.trim();
+    ? Boolean(email.trim() && password && (!needsTotp || totp.trim().length >= 6))
+    : Boolean(email.trim() && password && legalName.trim());
 
   return (
     <div
@@ -151,11 +163,31 @@ function AuthModal({
             onKeyDown={(e) => e.key === "Enter" && canSubmit && submit()} />
         </label>
 
+        {mode === "signin" && needsTotp && (
+          <label className="field">
+            <span className="label">Authenticator code</span>
+            <input className="input" value={totp} inputMode="numeric" autoComplete="one-time-code"
+              maxLength={20} autoFocus placeholder="123456"
+              onChange={(e) => setTotp(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && canSubmit && submit()} />
+            <span className="dim" style={{ fontSize: 12 }}>
+              Six digits from your authenticator app, or one of your recovery codes.
+            </span>
+          </label>
+        )}
+
         {error && <div className="statusmsg rejected">{error}</div>}
 
         <button className="btn btn-primary btn-lg" onClick={submit} disabled={busy || !canSubmit}>
           {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
         </button>
+
+        {mode === "signin" && (
+          <p className="muted" style={{ fontSize: 13, textAlign: "center", margin: 0 }}>
+            <Link href="/forgot-password" className="btn-link" style={{ fontSize: "inherit" }}
+              onClick={onClose}>Forgot your password?</Link>
+          </p>
+        )}
 
         {mode === "register" && (
           <p className="dim" style={{ fontSize: 12, textAlign: "center", margin: 0 }}>

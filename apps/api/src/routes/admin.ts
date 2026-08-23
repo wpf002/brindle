@@ -1,16 +1,15 @@
 import type { FastifyInstance } from "fastify";
-import { prisma, CreditStatus, NotificationType } from "@brindle/db";
-import { requireAdmin } from "../auth.js";
+import { prisma, CreditStatus, NotificationType, AdminRole } from "@brindle/db";
+import { requireAdmin, requireOperator, requireOwner, revokeAllSessions } from "../auth.js";
 import { syncDataMart, DEFAULT_REPORTS } from "../datamart.js";
 import { closeExpiredLots } from "../lotCloser.js";
 import { notify } from "../notify.js";
+import { audit } from "../audit.js";
 
-// Back office. Everything here is gated by the shared admin token — these are
-// the operations that move money or gate access, so none of them are reachable
-// with a normal user session.
+// Back office. Read access needs SUPPORT; anything that moves money or changes
+// access needs OPERATOR; managing admins needs OWNER. Every mutation is
+// recorded in the audit log against the acting human.
 export async function adminRoutes(app: FastifyInstance) {
-  // Queue of buyers awaiting credit approval — the review list that made the
-  // previously curl-only approval flow usable.
   app.get<{ Querystring: { status?: string } }>(
     "/admin/buyers",
     { preHandler: requireAdmin },
@@ -21,7 +20,7 @@ export async function adminRoutes(app: FastifyInstance) {
         select: {
           id: true, email: true, legalName: true, businessName: true, state: true,
           type: true, creditStatus: true, creditLimitCents: true, buyerNumber: true,
-          idVerifiedAt: true, createdAt: true,
+          idVerifiedAt: true, emailVerifiedAt: true, createdAt: true,
         },
         orderBy: { createdAt: "desc" },
         take: 200,
@@ -31,6 +30,7 @@ export async function adminRoutes(app: FastifyInstance) {
           ...b,
           creditLimitCents: b.creditLimitCents?.toString() ?? null,
           identityVerified: b.idVerifiedAt != null,
+          emailVerified: b.emailVerifiedAt != null,
         })),
       };
     },
@@ -38,48 +38,107 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { id: string }; Body: { reason?: string } }>(
     "/admin/buyers/:id/suspend",
-    { preHandler: requireAdmin },
+    { preHandler: requireOperator },
     async (req, reply) => {
       const user = await prisma.user.findUnique({ where: { id: req.params.id } });
       if (!user) return reply.code(404).send({ error: "USER_NOT_FOUND" });
+
       await prisma.user.update({ where: { id: user.id }, data: { creditStatus: CreditStatus.SUSPENDED } });
+      // A suspension should end their access now, not whenever a token expires.
+      const revoked = await revokeAllSessions(user.id);
+      await audit(req, "credit.suspend", { type: "user", id: user.id }, { reason: req.body?.reason, revoked });
       await notify(
         user.id,
         NotificationType.SYSTEM,
         "Your buyer credit has been suspended",
         req.body?.reason ?? "Contact Brindle support for details.",
       );
-      return { id: user.id, creditStatus: CreditStatus.SUSPENDED };
+      return { id: user.id, creditStatus: CreditStatus.SUSPENDED, sessionsRevoked: revoked };
     },
   );
 
-  // Pull the latest USDA AMS LMPR (DataMart) cattle price reports. Free, keyless,
-  // and safe to re-run — the ingest is idempotent on the report natural key.
   app.post<{ Body: { days?: number; slugs?: string[] } }>(
     "/admin/market/sync",
-    { preHandler: requireAdmin },
+    { preHandler: requireOperator },
     async (req) => {
       const days = Math.min(Math.max(req.body?.days ?? 3, 1), 30);
       const results = await syncDataMart(days, req.body?.slugs);
+      await audit(req, "market.sync", undefined, { days, results });
       return { results, availableReports: DEFAULT_REPORTS };
     },
   );
 
-  // Manually trigger the timed-lot close sweep (also runs on an interval).
-  app.post("/admin/lots/close-expired", { preHandler: requireAdmin }, async (req) => {
+  app.post("/admin/lots/close-expired", { preHandler: requireOperator }, async (req) => {
     const closed = await closeExpiredLots(req.server.sequencer);
+    await audit(req, "lots.close_expired", undefined, { closed });
     return { closed };
   });
 
   app.get("/admin/stats", { preHandler: requireAdmin }, async () => {
-    const [users, pendingCredit, activeLots, soldLots, marketRows, openDisputes] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { creditStatus: CreditStatus.PENDING } }),
-      prisma.lot.count({ where: { status: "ACTIVE" } }),
-      prisma.lot.count({ where: { status: "SOLD" } }),
-      prisma.marketReport.count(),
-      prisma.dispute.count({ where: { status: { in: ["OPEN", "UNDER_REVIEW"] } } }),
-    ]);
-    return { users, pendingCredit, activeLots, soldLots, marketRows, openDisputes };
+    const [users, pendingCredit, activeLots, soldLots, marketRows, openDisputes, liveSessions] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { creditStatus: CreditStatus.PENDING } }),
+        prisma.lot.count({ where: { status: "ACTIVE" } }),
+        prisma.lot.count({ where: { status: "SOLD" } }),
+        prisma.marketReport.count(),
+        prisma.dispute.count({ where: { status: { in: ["OPEN", "UNDER_REVIEW"] } } }),
+        prisma.session.count({ where: { revokedAt: null, expiresAt: { gt: new Date() } } }),
+      ]);
+    return { users, pendingCredit, activeLots, soldLots, marketRows, openDisputes, liveSessions };
   });
+
+  // ── audit trail ──────────────────────────────────────────────
+  app.get<{ Querystring: { action?: string; targetId?: string; limit?: string } }>(
+    "/admin/audit",
+    { preHandler: requireAdmin },
+    async (req) => {
+      const entries = await prisma.auditLog.findMany({
+        where: {
+          ...(req.query.action ? { action: req.query.action } : {}),
+          ...(req.query.targetId ? { targetId: req.query.targetId } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: Math.min(Number(req.query.limit ?? 100), 500),
+        include: { actor: { select: { email: true, legalName: true } } },
+      });
+      return { entries };
+    },
+  );
+
+  // ── admin management (OWNER only) ────────────────────────────
+  app.get("/admin/admins", { preHandler: requireOwner }, async () => {
+    const admins = await prisma.user.findMany({
+      where: { adminRole: { not: null } },
+      select: { id: true, email: true, legalName: true, adminRole: true, totpEnabledAt: true },
+      orderBy: { email: "asc" },
+    });
+    return {
+      admins: admins.map((a) => ({ ...a, twoFactorEnabled: a.totpEnabledAt != null })),
+    };
+  });
+
+  app.post<{ Params: { id: string }; Body: { role?: AdminRole | null } }>(
+    "/admin/admins/:id",
+    { preHandler: requireOwner },
+    async (req, reply) => {
+      const role = req.body?.role ?? null;
+      if (role !== null && !Object.values(AdminRole).includes(role)) {
+        return reply.code(400).send({ error: "INVALID_ROLE" });
+      }
+      const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+      if (!user) return reply.code(404).send({ error: "USER_NOT_FOUND" });
+
+      // Don't let the last owner demote themselves and lock everyone out of
+      // the back office.
+      if (user.adminRole === AdminRole.OWNER && role !== AdminRole.OWNER) {
+        const owners = await prisma.user.count({ where: { adminRole: AdminRole.OWNER } });
+        if (owners <= 1) return reply.code(409).send({ error: "LAST_OWNER" });
+      }
+
+      await prisma.user.update({ where: { id: user.id }, data: { adminRole: role } });
+      await audit(req, role ? "admin.grant" : "admin.revoke", { type: "user", id: user.id }, { role });
+      return { id: user.id, adminRole: role };
+    },
+  );
 }

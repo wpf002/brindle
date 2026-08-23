@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { wsBase, getAuction } from "../../../lib/api";
-import { getToken, getSession, onAuthChange, openSignIn } from "../../../lib/session";
+import { isSignedIn, getSession, onAuthChange, openSignIn } from "../../../lib/session";
 import { formatCents } from "../../../lib/format";
 import { LiveVideo } from "../../../components/LiveVideo";
 
@@ -29,7 +29,7 @@ export default function LiveRing({ params }: { params: { auctionId: string } }) 
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const sync = () => setSignedIn(Boolean(getToken()));
+    const sync = () => void isSignedIn().then(setSignedIn);
     sync();
     return onAuthChange(sync);
   }, []);
@@ -42,9 +42,9 @@ export default function LiveRing({ params }: { params: { auctionId: string } }) 
   }, [auctionId, signedIn]);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    const socket = new WebSocket(`${wsBase()}/auctions/${auctionId}/ring?token=${token}`);
+    if (!signedIn) return;
+    // The session cookie authenticates the handshake — see BidBox.
+    const socket = new WebSocket(`${wsBase()}/auctions/${auctionId}/ring`);
     ws.current = socket;
     socket.onopen = () => setConnected(true);
     socket.onclose = () => setConnected(false);

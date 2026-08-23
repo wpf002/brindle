@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@brindle/db";
-import { requireAuth, requireAdmin } from "../auth.js";
+import { requireAuth, requireOperator } from "../auth.js";
+import { audit } from "../audit.js";
 
 // Trust surface: ratings, verified-seller badges, and a transaction-history
 // summary. Reputation is what lets a buyer bid real money with a seller they've
@@ -53,11 +54,12 @@ export async function trustRoutes(app: FastifyInstance) {
   // Admin grants the verified-seller badge (after off-platform vetting).
   app.post<{ Params: { id: string } }>(
     "/admin/users/:id/verify",
-    { preHandler: requireAdmin },
+    { preHandler: requireOperator },
     async (req, reply) => {
       const user = await prisma.user.findUnique({ where: { id: req.params.id } });
       if (!user) return reply.code(404).send({ error: "USER_NOT_FOUND" });
       await prisma.user.update({ where: { id: user.id }, data: { sellerVerified: true } });
+      await audit(req, "seller.verify", { type: "user", id: user.id });
       return { id: user.id, sellerVerified: true };
     },
   );

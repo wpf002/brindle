@@ -3,6 +3,7 @@ import websocket from "@fastify/websocket";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
+import cookie from "@fastify/cookie";
 import { authPlugin } from "./auth.js";
 import { SequencerManager } from "./sequencer/manager.js";
 import { PrismaLotStateStore } from "./sequencer/prismaStore.js";
@@ -23,6 +24,7 @@ import { publicRoutes } from "./routes/public.js";
 import { sellerRoutes } from "./routes/sellers.js";
 import { newsRoutes } from "./routes/news.js";
 import { stripeConnectRoutes } from "./routes/stripeConnect.js";
+import { stripeWebhookRoutes } from "./routes/stripeWebhook.js";
 import { identityRoutes } from "./routes/identity.js";
 import { watchlistRoutes } from "./routes/watchlist.js";
 import { notificationRoutes } from "./routes/notifications.js";
@@ -31,8 +33,13 @@ import { catalogImportRoutes } from "./routes/catalogImport.js";
 import { adminRoutes } from "./routes/admin.js";
 import { bidsRoutes } from "./routes/bids.js";
 import { ringRoutes } from "./routes/ring.js";
+import Redis from "ioredis";
+import { prisma } from "@brindle/db";
 import { closeExpiredLots } from "./lotCloser.js";
 import { initObservability } from "./observability.js";
+import { withLock } from "./lock.js";
+import { makeStripeClient } from "./stripeClient.js";
+import { deployEnv, activeDevFallbacks } from "./env.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -54,16 +61,33 @@ app.decorate("ring", ring);
 
 // Timed lots don't close themselves — soft-close extension lives in the pure
 // resolver, but a lot that simply runs out the clock with no further bids needs
-// a sweep to notice. Runs in-process; a multi-instance deploy should move this
-// behind a leader election or an external scheduler so it runs exactly once.
+// a sweep to notice. Guarded by a Redis lock so exactly one instance sweeps per
+// tick: without it every replica would fire its own duplicate close
+// notifications to the same buyers and sellers.
 const CLOSE_SWEEP_MS = Number(process.env.LOT_CLOSE_SWEEP_MS ?? 30_000);
+const lockRedis = new Redis(redisUrl);
 const closeSweep = setInterval(() => {
-  void closeExpiredLots(sequencer).catch((err) => app.log.error({ err }, "lot close sweep failed"));
+  void withLock(lockRedis, "brindle:lock:close-expired", CLOSE_SWEEP_MS * 2, () =>
+    closeExpiredLots(sequencer),
+  ).catch((err) => app.log.error({ err }, "lot close sweep failed"));
 }, CLOSE_SWEEP_MS);
 closeSweep.unref(); // never hold the process open on this alone
 
+// Expired session rows are dead weight; prune them hourly (also lock-guarded).
+const sessionSweep = setInterval(() => {
+  void withLock(lockRedis, "brindle:lock:prune-sessions", 3600_000, async () => {
+    const { count } = await prisma.session.deleteMany({
+      where: { expiresAt: { lt: new Date(Date.now() - 7 * 24 * 3600_000) } },
+    });
+    if (count > 0) app.log.info({ count }, "pruned expired sessions");
+  }).catch((err) => app.log.error({ err }, "session prune failed"));
+}, 3600_000);
+sessionSweep.unref();
+
 app.addHook("onClose", async () => {
   clearInterval(closeSweep);
+  clearInterval(sessionSweep);
+  lockRedis.disconnect();
   await sequencer.shutdown();
   await ring.shutdown();
 });
@@ -80,9 +104,13 @@ await app.register(rateLimit, {
   timeWindow: "1 minute",
 });
 
+// Session cookies are httpOnly, so the browser sends them automatically and
+// page JS never sees the token.
+await app.register(cookie);
+
 await app.register(cors, {
-  origin: (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:3002").split(","),
-  credentials: true,
+  origin: (process.env.CORS_ORIGINS ?? "http://localhost:3010").split(","),
+  credentials: true, // required for the session cookie to ride along
 });
 await app.register(websocket);
 await app.register(authPlugin);
@@ -101,6 +129,9 @@ await app.register(publicRoutes);
 await app.register(sellerRoutes);
 await app.register(newsRoutes);
 await app.register(stripeConnectRoutes);
+// Registered as its own plugin so its raw-body parser stays encapsulated —
+// every other route keeps normal JSON parsing.
+await app.register(stripeWebhookRoutes);
 await app.register(identityRoutes);
 await app.register(watchlistRoutes);
 await app.register(notificationRoutes);
@@ -110,10 +141,20 @@ await app.register(adminRoutes);
 await app.register(bidsRoutes);
 await app.register(ringRoutes);
 
+// Build the Stripe client eagerly. Every other adapter is constructed during
+// registration, so a deployment missing real keys already fails here; Stripe's
+// is lazy, and finding out at the first checkout is far too late.
+makeStripeClient();
+
+const fallbacks = activeDevFallbacks();
+if (fallbacks.length > 0) {
+  app.log.warn({ env: deployEnv(), fallbacks }, "running on development stubs — not real integrations");
+}
+
 const port = Number(process.env.PORT ?? 3001);
 app
   .listen({ port, host: "0.0.0.0" })
-  .then(() => app.log.info(`brindle api on :${port}`))
+  .then(() => app.log.info({ env: deployEnv() }, `brindle api on :${port}`))
   .catch((err) => {
     app.log.error(err);
     process.exit(1);

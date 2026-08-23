@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { prisma, DisputeStatus, DisputeClaim, PaymentStatus } from "@brindle/db";
 import { disputeTransition, type DisputeAction } from "@brindle/settlement";
-import { requireAuth, requireAdmin } from "../auth.js";
+import { requireAuth, requireOperator } from "../auth.js";
+import { audit } from "../audit.js";
 import { makePaymentService } from "../settlement.js";
 
 export async function disputeRoutes(app: FastifyInstance) {
@@ -48,7 +49,7 @@ export async function disputeRoutes(app: FastifyInstance) {
   // Arbiter advances the dispute; fund side effects follow the pure transition.
   app.post<{ Params: { id: string }; Body: { action?: DisputeAction } }>(
     "/disputes/:id/transition",
-    { preHandler: requireAdmin },
+    { preHandler: requireOperator },
     async (req, reply) => {
       const action = req.body?.action;
       if (!action) return reply.code(400).send({ error: "ACTION_REQUIRED" });
@@ -73,6 +74,14 @@ export async function disputeRoutes(app: FastifyInstance) {
       const updated = await prisma.dispute.update({
         where: { id: dispute.id },
         data: { status: t.next, resolvedAt: ["RESOLVED_REFUND", "RESOLVED_RELEASE", "WITHDRAWN"].includes(t.next) ? new Date() : null },
+      });
+      await audit(req, "dispute.transition", { type: "dispute", id: dispute.id }, {
+        action,
+        from: dispute.status,
+        to: t.next,
+        lotId: dispute.lotId,
+        refunded: t.refundsFunds,
+        captured: t.capturesFunds,
       });
       return { disputeId: updated.id, status: updated.status };
     },

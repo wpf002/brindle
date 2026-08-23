@@ -1,14 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@brindle/db";
 import { normalizeAmsRow, type AmsRow } from "@brindle/market-data";
-import { requireAdmin } from "../auth.js";
+import { requireOperator } from "../auth.js";
 import { queryComparables } from "../marketQuery.js";
 
 export async function marketRoutes(app: FastifyInstance) {
   // Ingest AMS rows (admin/back-office). Idempotent on the natural key.
   app.post<{ Body: { rows?: AmsRow[] } }>(
     "/market/ingest",
-    { preHandler: requireAdmin },
+    { preHandler: requireOperator },
     async (req, reply) => {
       const rows = req.body?.rows;
       if (!Array.isArray(rows)) return reply.code(400).send({ error: "ROWS_REQUIRED" });

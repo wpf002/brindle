@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { prisma, Prisma, CreditStatus } from "@brindle/db";
 import { nextBuyerNumber } from "../buyers.js";
-import { requireAdmin } from "../auth.js";
+import { requireOperator } from "../auth.js";
+import { audit } from "../audit.js";
 
 // Approving credit is sensitive (it gates real money), so it sits behind the
 // shared admin token until full RBAC lands. Identity verification (Persona /
@@ -10,7 +11,7 @@ import { requireAdmin } from "../auth.js";
 export async function buyerRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string }; Body: { creditLimitCents?: string | number } }>(
     "/buyers/:id/approve",
-    { preHandler: requireAdmin },
+    { preHandler: requireOperator },
     async (req, reply) => {
       const user = await prisma.user.findUnique({ where: { id: req.params.id } });
       if (!user) return reply.code(404).send({ error: "USER_NOT_FOUND" });
@@ -23,6 +24,11 @@ export async function buyerRoutes(app: FastifyInstance) {
         const updated = await prisma.user.update({
           where: { id: user.id },
           data: { creditStatus: CreditStatus.APPROVED, creditLimitCents },
+        });
+        await audit(req, "credit.approve", { type: "user", id: user.id }, {
+          buyerNumber: updated.buyerNumber,
+          creditLimitCents: creditLimitCents?.toString(),
+          reapproval: true,
         });
         return { buyerNumber: updated.buyerNumber, creditStatus: updated.creditStatus };
       }
@@ -40,6 +46,10 @@ export async function buyerRoutes(app: FastifyInstance) {
           const updated = await prisma.user.update({
             where: { id: user.id },
             data: { buyerNumber: candidate, creditStatus: CreditStatus.APPROVED, creditLimitCents },
+          });
+          await audit(req, "credit.approve", { type: "user", id: user.id }, {
+            buyerNumber: updated.buyerNumber,
+            creditLimitCents: creditLimitCents?.toString(),
           });
           return { buyerNumber: updated.buyerNumber, creditStatus: updated.creditStatus };
         } catch (e) {

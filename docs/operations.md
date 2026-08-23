@@ -7,7 +7,7 @@ deliberately not done yet.
 
 | Service | What it is | Notes |
 |---|---|---|
-| `api` | Fastify + WebSocket (`apps/api`) | Stateless except the in-process lot-close sweep — see below |
+| `api` | Fastify + WebSocket (`apps/api`) | Stateless; scheduled work is Redis-lock-guarded, so replicas are safe |
 | `web` | Next.js (`apps/web`) | Server-renders catalog/lot/market pages |
 | Postgres | Durable state, immutable bid log | The system of record |
 | Redis | Bid/ring ingest streams, sequencer cursors, pub/sub | Not a cache — losing it loses in-flight bids |
@@ -21,15 +21,59 @@ deliberately not done yet.
 
 ## Required production configuration
 
-The API refuses to boot without these, by design — a silent fallback would mean
-fake payments or unverified identities in production:
+Set `BRINDLE_ENV` to `staging` or `production` on every real deployment. It is
+deliberately separate from `NODE_ENV`, which is routinely not `"production"` on a
+staging box even though staging is a real deployment with real people on it.
+Anything other than `development` makes these mandatory — the API refuses to boot
+without them rather than silently falling back to a stub:
 
 - `JWT_SECRET` — must not be the placeholder
 - `STRIPE_SECRET_KEY` — otherwise settlement uses an in-memory fake gateway
 - `PERSONA_API_KEY` + `PERSONA_TEMPLATE_ID` — otherwise identity self-approves
+- `RESEND_API_KEY` — otherwise password-reset and verification links go to stdout
 
-Also set: `ADMIN_API_TOKEN`, `DATABASE_URL`, `REDIS_URL`, `CORS_ORIGINS`,
-`WEB_BASE_URL`. See `.env.example` for the full list.
+The boot failure names the missing variable. `/ready` reports the environment and
+any stub in use, so you can confirm from outside the process.
+
+Also set: `STRIPE_WEBHOOK_SECRET`, `DATABASE_URL`, `REDIS_URL`, `CORS_ORIGINS`,
+`WEB_BASE_URL`. See `.env.example` for the full list. There is no admin token —
+see **Administrator access** below.
+
+## Administrator access
+
+Admin rights are a per-user role, not a shared secret:
+
+| Role | Can |
+|---|---|
+| `SUPPORT` | Read: buyer list, stats, audit log |
+| `OPERATOR` | Act: approve credit, suspend buyers, resolve disputes, sync market data |
+| `OWNER` | Everything, including granting and revoking admin access |
+
+There is no bootstrap endpoint. The first OWNER is granted from a machine that
+already has database credentials:
+
+```bash
+pnpm --filter @brindle/api admin:grant you@ranch.com OWNER
+pnpm --filter @brindle/api admin:grant --list
+```
+
+After that, use the admin console — every change there lands in the audit log
+with the actor, target, and IP. Removing the last OWNER is refused by both the
+console and the CLI.
+
+## Stripe webhooks
+
+Point a Stripe webhook endpoint at `POST /webhooks/stripe` and set
+`STRIPE_WEBHOOK_SECRET` to its signing secret. Subscribe to at least:
+
+- `account.updated` — a Connect account disabled *after* onboarding. Without
+  this, a seller whose payouts were paused looks fine until someone refreshes.
+- `payment_intent.succeeded`, `payment_intent.payment_failed`
+- `charge.refunded`, `charge.dispute.created`
+
+The route verifies the signature against the raw body and returns 500 on a
+handler error so Stripe retries rather than dropping the event. With no signing
+secret configured it returns 503 — it never processes an unsigned payload.
 
 ## Deploying
 
@@ -42,30 +86,45 @@ railway run --service api pnpm --filter @brindle/db exec prisma migrate deploy
 
 `migrate deploy` only applies committed migrations; it never generates or prompts.
 
-## Known scaling limit: the lot-close sweep
+## Scheduled work
 
-`closeExpiredLots` runs on an interval **inside each API process**. With more
-than one API instance, every instance sweeps. The close itself is safe — the
-status update is idempotent and the sequencer's `forceClose` is a no-op on a
-cold cache — but each instance will independently fire close notifications,
-so buyers could get duplicates.
+Two intervals run inside the API process:
 
-**Before scaling past one API instance**, do one of:
-- move the sweep to a dedicated single-instance worker, or
-- gate it behind a Redis lock (`SET key NX PX`), or
-- drive it from an external scheduler hitting `POST /admin/lots/close-expired`.
+- **lot-close sweep** (`LOT_CLOSE_SWEEP_MS`, default 30s) — a timed lot whose
+  clock runs out with no further bids needs someone to notice. Soft-close
+  extension lives in the pure resolver; this is what catches plain expiry.
+- **session prune** (hourly) — deletes session rows a week past expiry.
 
-The same applies to any future scheduled work.
+Both take a Redis lease first (`withLock`, `SET key NX PX` with a
+compare-and-delete release), so exactly one instance runs each per tick. Replicas
+are safe: without the lease every instance would fire its own duplicate close
+notifications to the same buyers and sellers.
+
+`POST /admin/lots/close-expired` (OPERATOR) runs the same sweep on demand if you
+would rather drive it from an external scheduler.
 
 ## Backups
 
-Not configured by this repo — it must be enabled on the managed database:
+```bash
+pnpm --filter @brindle/api backup                  # dump, then verify the restore
+pnpm --filter @brindle/api backup -- --no-verify   # dump only
+pnpm --filter @brindle/api backup -- --verify-only path/to.dump
+```
 
-1. **Enable point-in-time recovery** on the Postgres instance. The bid log is
+The verification is the point: it restores the dump into a throwaway database,
+compares row counts on `User`, `Auction`, `Lot`, `Bid`, `Payment`, `Dispute`, and
+`AuditLog` against the source, drops the scratch database, and **deletes the dump
+if it doesn't check out**. A dump that can't be restored is worse than no dump,
+because it looks like protection. Needs `pg_dump`/`pg_restore`/`psql` on PATH;
+writes to `BACKUP_DIR` (default `./backups`).
+
+Still the host's job, and not configured by this repo:
+
+1. **Point-in-time recovery** on the managed Postgres instance. The bid log is
    the dispute record; losing it is unrecoverable in a way that losing a cache
    is not.
-2. **Verify a restore actually works** before launch. An untested backup is a
-   hypothesis, not a backup.
+2. **Off-site retention.** A dump on the same disk as the database protects
+   against nothing. Ship it somewhere else, encrypted, on a schedule.
 3. Redis holds in-flight bid streams. Enable AOF persistence if your provider
    offers it — a Redis loss mid-sale drops bids that haven't been drained to
    Postgres yet.
@@ -77,10 +136,12 @@ reports:
 
 ```bash
 curl -X POST "$API/admin/market/sync" \
-  -H "x-admin-token: $ADMIN_API_TOKEN" \
+  -b "brindle_session=$SESSION_COOKIE" \
   -H 'content-type: application/json' \
   -d '{"days":3}'
 ```
+
+Requires an `OPERATOR` session; the sync is written to the audit log.
 
 Idempotent on the report natural key, so it's safe to run on a schedule (daily
 is plenty — these reports publish once per business day).
@@ -112,8 +173,9 @@ Run it against a staging database, never production.
 
 ## Not done yet
 
-- No automated backup verification
 - No alerting (errors are captured; nothing pages anyone)
+- No off-site backup retention — the verification runs, the shipping doesn't
 - No multi-region or failover story
-- Sweep is single-instance-only (above)
+- No malware scanning on uploads (file signatures are verified; contents aren't)
 - No independent security review — see `docs/security.md`
+- No legal review of the terms, privacy policy, or Packers and Stockyards posture

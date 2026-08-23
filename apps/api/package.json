@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "loadtest": "tsx src/loadtest.ts",
-    "seed": "tsx src/seed-dev.ts"
+    "seed": "tsx src/seed-dev.ts",
+    "admin:grant": "tsx src/grant-admin.ts",
+    "backup": "tsx src/backup.ts"
   },
   "dependencies": {
     "fastify": "^4.28.0",
@@ -19,6 +21,7 @@
     "@fastify/cors": "^9.0.1",
     "@fastify/rate-limit": "^9.1.0",
     "@fastify/helmet": "^11.1.1",
+    "@fastify/cookie": "^9.3.1",
     "jose": "^5.6.3",
     "stripe": "^16.2.0",
     "ioredis": "^5.4.1",

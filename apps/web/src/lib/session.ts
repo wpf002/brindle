@@ -1,9 +1,18 @@
 "use client";
 import { API } from "./api";
 
-// Client-side session: a JWT in localStorage. Dev sign-in mints (and provisions)
-// an account via /auth/dev-login; real identity/credit onboarding replaces this.
-const KEY = "brindle_token";
+// Client-side session state.
+//
+// The session token itself lives in an httpOnly cookie the API sets — page JS
+// can't read it, so an XSS bug can't lift a session and replay it elsewhere.
+// The cost is that "am I signed in?" is no longer a synchronous localStorage
+// read; it's whatever /auth/me last told us. So we cache that answer here,
+// dedupe concurrent loads, and invalidate on sign-in/sign-out.
+//
+// Every request goes out with `credentials: "include"` so the cookie rides
+// along cross-origin (the API and web app share a registrable domain, which is
+// what makes the SameSite=Lax cookie work).
+
 const EVENT = "brindle-auth";
 
 export interface Session {
@@ -23,20 +32,22 @@ export interface Account {
   identityVerified: boolean;
   stripeConnected: boolean;
   stripeOnboarded: boolean;
+  twoFactorEnabled: boolean;
+  adminRole: string | null;
 }
 
-export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(KEY);
+export interface Me {
+  session: Session;
+  account: Account;
 }
 
-export function setToken(token: string): void {
-  window.localStorage.setItem(KEY, token);
-  window.dispatchEvent(new Event(EVENT));
-}
+// `undefined` means "not loaded yet", `null` means "loaded, signed out".
+let cached: Me | null | undefined;
+let inFlight: Promise<Me | null> | null = null;
 
-export function clearToken(): void {
-  window.localStorage.removeItem(KEY);
+function invalidate(): void {
+  cached = undefined;
+  inFlight = null;
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -45,42 +56,56 @@ export function onAuthChange(fn: () => void): () => void {
   return () => window.removeEventListener(EVENT, fn);
 }
 
+/**
+ * The current account, from cache when we have it. Concurrent callers share
+ * one request — several components mount at once and would otherwise each fire
+ * their own /auth/me.
+ */
+export async function getMe(): Promise<Me | null> {
+  if (cached !== undefined) return cached;
+  if (inFlight) return inFlight;
+
+  inFlight = (async () => {
+    try {
+      const r = await fetch(`${API}/auth/me`, { credentials: "include" });
+      cached = r.ok ? ((await r.json()) as Me) : null;
+    } catch {
+      cached = null;
+    } finally {
+      inFlight = null;
+    }
+    return cached;
+  })();
+
+  return inFlight;
+}
+
+/** Force a re-read — after verifying email, connecting Stripe, enabling 2FA. */
+export async function refreshMe(): Promise<Me | null> {
+  cached = undefined;
+  inFlight = null;
+  return getMe();
+}
+
 export async function getSession(): Promise<Session | null> {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const r = await fetch(`${API}/auth/me`, { headers: { authorization: `Bearer ${token}` } });
-    if (!r.ok) return null;
-    return (await r.json()).session as Session;
-  } catch {
-    return null;
-  }
+  return (await getMe())?.session ?? null;
 }
 
-/** Session plus live account/verification state in one round trip. */
-export async function getMe(): Promise<{ session: Session; account: Account } | null> {
-  const token = getToken();
-  if (!token) return null;
-  try {
-    const r = await fetch(`${API}/auth/me`, { headers: { authorization: `Bearer ${token}` } });
-    if (!r.ok) return null;
-    return (await r.json()) as { session: Session; account: Account };
-  } catch {
-    return null;
-  }
+/** Is anyone signed in? Async now that the token is out of reach of JS. */
+export async function isSignedIn(): Promise<boolean> {
+  return (await getMe()) != null;
 }
 
-/** Authenticated JSON request using the stored token. */
+/** Authenticated JSON request. The session cookie is sent automatically. */
 export async function authed<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
   const r = await fetch(`${API}${path}`, {
     ...init,
+    credentials: "include",
     headers: {
       // Only claim a JSON body when we're actually sending one — Fastify
       // rejects an empty payload that declares content-type: application/json,
       // which broke every bodyless POST (verify identity, mark-read, watch).
       ...(init.body != null ? { "content-type": "application/json" } : {}),
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...(init.headers ?? {}),
     },
   });
@@ -98,6 +123,18 @@ const ERROR_TEXT: Record<string, string> = {
   VALID_EMAIL_REQUIRED: "Enter a valid email address.",
   LEGAL_NAME_REQUIRED: "Enter your name or ranch name.",
   EMAIL_AND_PASSWORD_REQUIRED: "Enter both your email and password.",
+  ACCOUNT_LOCKED: "Too many failed sign-ins. Try again in about 15 minutes.",
+  TOO_MANY_ATTEMPTS: "Too many attempts from here. Give it a few minutes and try again.",
+  TOTP_REQUIRED: "Enter the six-digit code from your authenticator app.",
+  INVALID_TOTP: "That code didn't work. Codes change every 30 seconds — try the current one.",
+  TOTP_ALREADY_ENABLED: "Two-factor is already on for this account.",
+  TOTP_NOT_STARTED: "Start the two-factor setup again to get a fresh code.",
+  TOKEN_REQUIRED: "That link is missing its confirmation code.",
+  INVALID_OR_EXPIRED_TOKEN: "That link has expired or was already used. Request a new one.",
+  TOKEN_AND_PASSWORD_REQUIRED: "Enter a new password.",
+  BOTH_PASSWORDS_REQUIRED: "Enter your current password and the new one.",
+  ALREADY_VERIFIED: "Your email is already confirmed.",
+  CONTENT_MISMATCH: "That file isn't the format it claims to be — re-export it and try again.",
   STRIPE_NOT_CONFIGURED: "Payouts aren't configured on this environment yet.",
   CSV_REQUIRED: "Paste your catalog CSV first.",
   NOT_A_PARTY_TO_THIS_LOT: "Only the buyer and seller of this lot can see its delivery details.",
@@ -111,6 +148,7 @@ const ERROR_TEXT: Record<string, string> = {
   LOT_NOT_FOUND: "That lot doesn't exist anymore — refresh and try again.",
   NOT_LOT_SELLER: "That lot belongs to a different seller account.",
   SELLER_NOT_FOUND: "We couldn't find that seller.",
+  UNAUTHENTICATED: "Sign in to do that.",
 };
 
 /** Turn a thrown error (often a raw API error code) into copy a seller can act on. */
@@ -131,18 +169,26 @@ export function onOpenSignIn(fn: () => void): () => void {
   return () => window.removeEventListener(OPEN_SIGNIN_EVENT, fn);
 }
 
-/** Sign in with real credentials. Throws an API error code on failure. */
-export async function login(email: string, password: string): Promise<void> {
-  const r = await fetch(`${API}/auth/login`, {
+async function post(path: string, body: unknown): Promise<Record<string, unknown>> {
+  const r = await fetch(`${API}${path}`, {
     method: "POST",
+    credentials: "include",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(body),
   });
-  if (!r.ok) {
-    const body = await r.json().catch(() => ({}));
-    throw new Error(body.error ?? `HTTP ${r.status}`);
-  }
-  setToken((await r.json()).token);
+  const parsed = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!r.ok) throw new Error((parsed.error as string) ?? `HTTP ${r.status}`);
+  return parsed;
+}
+
+/**
+ * Sign in. Throws the API's error code, which the caller maps to copy —
+ * `TOTP_REQUIRED` in particular is a prompt, not a failure: the form re-submits
+ * with the code filled in.
+ */
+export async function login(email: string, password: string, totp?: string): Promise<void> {
+  await post("/auth/login", { email, password, totp: totp || undefined });
+  invalidate();
 }
 
 export interface RegisterInput {
@@ -155,27 +201,24 @@ export interface RegisterInput {
 }
 
 export async function register(input: RegisterInput): Promise<void> {
-  const r = await fetch(`${API}/auth/register`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!r.ok) {
-    const body = await r.json().catch(() => ({}));
-    throw new Error(body.error ?? `HTTP ${r.status}`);
-  }
-  setToken((await r.json()).token);
+  await post("/auth/register", input);
+  invalidate();
+}
+
+export async function signOut(): Promise<void> {
+  await post("/auth/logout", {}).catch(() => undefined); // clear locally regardless
+  cached = null;
+  inFlight = null;
+  window.dispatchEvent(new Event(EVENT));
 }
 
 /** Dev-only convenience sign-in; the API disables this outside development. */
 export async function devSignIn(email: string): Promise<boolean> {
-  const r = await fetch(`${API}/auth/dev-login`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-  if (!r.ok) return false;
-  const { token } = await r.json();
-  setToken(token);
+  try {
+    await post("/auth/dev-login", { email });
+  } catch {
+    return false;
+  }
+  invalidate();
   return true;
 }

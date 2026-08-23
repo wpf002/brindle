@@ -1,4 +1,5 @@
 import { prisma, type NotificationType } from "@brindle/db";
+import { useDevFallback } from "./env.js";
 
 // Email fan-out is a pluggable adapter, same shape as the payment gateway and
 // identity provider: a real implementation and a dev fallback that just logs.
@@ -35,7 +36,11 @@ class ResendEmailSender implements EmailSender {
 
 function makeEmailSender(): EmailSender {
   const key = process.env.RESEND_API_KEY;
-  return key ? new ResendEmailSender(key) : new ConsoleEmailSender();
+  if (key) return new ResendEmailSender(key);
+  // Logging password-reset and verification links to stdout is fine on a
+  // laptop and unacceptable anywhere else — those emails ARE the auth flow.
+  useDevFallback("email", ["RESEND_API_KEY"]);
+  return new ConsoleEmailSender();
 }
 
 const emailSender = makeEmailSender();

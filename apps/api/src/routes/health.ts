@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@brindle/db";
+import { deployEnv, activeDevFallbacks } from "../env.js";
 
 export async function health(app: FastifyInstance) {
   // Liveness: is the process up? Deliberately dependency-free so a database
@@ -27,6 +28,14 @@ export async function health(app: FastifyInstance) {
     }
 
     const ready = Object.values(checks).every((v) => v === "ok");
-    return reply.code(ready ? 200 : 503).send({ ready, checks });
+    // Report any subsystem on a stub, so nobody has to guess whether identity
+    // checks or payments on this box are real. Only ever non-empty locally —
+    // useDevFallback() refuses to boot a real deployment on stubs.
+    return reply.code(ready ? 200 : 503).send({
+      ready,
+      checks,
+      env: deployEnv(),
+      devFallbacks: activeDevFallbacks(),
+    });
   });
 }

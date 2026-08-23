@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { authed, getToken, onAuthChange, openSignIn, humanizeError } from "../../lib/session";
+import { authed, isSignedIn, onAuthChange, openSignIn, humanizeError } from "../../lib/session";
 import { formatCents } from "../../lib/format";
 import { SellerOnboarding } from "../../components/SellerOnboarding";
 import { CatalogImport } from "../../components/CatalogImport";
@@ -37,7 +37,7 @@ export default function Sell() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    const sync = () => setSignedIn(Boolean(getToken()));
+    const sync = () => void isSignedIn().then(setSignedIn);
     sync();
     return onAuthChange(sync);
   }, []);

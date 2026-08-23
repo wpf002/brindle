@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@brindle/db";
-import { requireAdmin } from "../auth.js";
+import { requireOperator } from "../auth.js";
 
 // Editorial content — market reports, sale recaps, ranch news. Platform-authored
 // (same admin gate as market-data ingest); read side is public.
@@ -27,7 +27,7 @@ export async function newsRoutes(app: FastifyInstance) {
       slug?: string; title?: string; dek?: string; body?: string; category?: string;
       authorName?: string; authorTitle?: string; sellerId?: string; publishedAt?: string;
     };
-  }>("/news", { preHandler: requireAdmin }, async (req, reply) => {
+  }>("/news", { preHandler: requireOperator }, async (req, reply) => {
     const b = req.body ?? {};
     if (!b.slug || !b.title || !b.dek || !b.body || !b.category || !b.authorName) {
       return reply.code(400).send({ error: "MISSING_REQUIRED_FIELDS" });

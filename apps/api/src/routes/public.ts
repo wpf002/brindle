@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@brindle/db";
-import { requireAdmin } from "../auth.js";
+import { requireOwner } from "../auth.js";
 import { generateApiKey, requireApiKey } from "../apikey.js";
 import { queryComparables } from "../marketQuery.js";
 
@@ -10,7 +10,7 @@ export async function publicRoutes(app: FastifyInstance) {
   // Mint an API key (admin). Raw key is shown exactly once.
   app.post<{ Body: { label?: string; scopes?: string[] } }>(
     "/admin/api-keys",
-    { preHandler: requireAdmin },
+    { preHandler: requireOwner },
     async (req, reply) => {
       const { label, scopes } = req.body ?? {};
       if (!label || !Array.isArray(scopes) || scopes.length === 0) {

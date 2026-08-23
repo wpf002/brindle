@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { authed, getToken, onAuthChange, openSignIn } from "../lib/session";
+import { authed, isSignedIn, onAuthChange, openSignIn } from "../lib/session";
 
 /** Star toggle that saves a lot to the signed-in buyer's watchlist. */
 export function WatchButton({ lotId }: { lotId: string }) {
@@ -9,14 +9,13 @@ export function WatchButton({ lotId }: { lotId: string }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const sync = () => {
-      const has = Boolean(getToken());
+    const sync = () => void isSignedIn().then((has) => {
       setSignedIn(has);
       if (!has) { setWatching(false); return; }
       void authed<{ lotIds: string[] }>(`/watchlist/mine?lotIds=${lotId}`)
         .then((r) => setWatching(r.lotIds.includes(lotId)))
         .catch(() => {});
-    };
+    });
     sync();
     return onAuthChange(sync);
   }, [lotId]);

@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { useDevFallback } from "./env.js";
 
 let cached: Stripe | null | undefined;
 
@@ -7,9 +8,8 @@ export function makeStripeClient(): Stripe | null {
   if (cached !== undefined) return cached;
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("STRIPE_SECRET_KEY is required in production");
-    }
+    // A fake gateway "settles" money that never moves — never outside local dev.
+    useDevFallback("payments", ["STRIPE_SECRET_KEY"]);
     cached = null;
     return cached;
   }

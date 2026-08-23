@@ -37,8 +37,9 @@ export async function stripeConnectRoutes(app: FastifyInstance) {
     return { url: link.url };
   });
 
-  // Poll after the return redirect (no public webhook endpoint in local dev) to
-  // find out whether Stripe considers the account ready to accept charges.
+  // Poll right after the return redirect, so the console reflects reality the
+  // instant the seller lands back. Ongoing changes (an account later disabled)
+  // arrive via the `account.updated` webhook instead of waiting for a refresh.
   app.get("/console/stripe/status", { preHandler: requireAuth }, async (req) => {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.session!.userId } });
     if (!user.stripeAccountId) return { connected: false, onboarded: false };
@@ -48,8 +49,11 @@ export async function stripeConnectRoutes(app: FastifyInstance) {
 
     const account = await stripe.accounts.retrieve(user.stripeAccountId);
     const onboarded = Boolean(account.charges_enabled && account.details_submitted);
-    if (onboarded && !user.stripeOnboardedAt) {
-      await prisma.user.update({ where: { id: user.id }, data: { stripeOnboardedAt: new Date() } });
+    if (onboarded !== (user.stripeOnboardedAt != null)) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { stripeOnboardedAt: onboarded ? new Date() : null },
+      });
     }
     return { connected: true, onboarded, chargesEnabled: account.charges_enabled, detailsSubmitted: account.details_submitted };
   });

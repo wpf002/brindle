@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { prisma } from "@brindle/db";
 import { requireAuth } from "../auth.js";
 import { makeIdentityProvider } from "../identity.js";
+import { isLocalDev } from "../env.js";
 
 export async function identityRoutes(app: FastifyInstance) {
   const provider = makeIdentityProvider();
@@ -14,11 +15,12 @@ export async function identityRoutes(app: FastifyInstance) {
     return { inquiryUrl, ref };
   });
 
-  // Dev-only: simulates the user completing Persona's hosted flow. Never
-  // available in production — real verification only ever completes via the
-  // signed webhook below.
+  // Dev-only: simulates the user completing Persona's hosted flow. Gated on
+  // isLocalDev(), not NODE_ENV — a staging box is a real deployment and must
+  // not hand out verified badges. There, verification only ever completes via
+  // the signed webhook below.
   app.post<{ Querystring: { ref?: string } }>("/identity/dev-approve", { preHandler: requireAuth }, async (req, reply) => {
-    if (process.env.NODE_ENV === "production") return reply.code(404).send({ error: "NOT_FOUND" });
+    if (!isLocalDev()) return reply.code(404).send({ error: "NOT_FOUND" });
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.session!.userId } });
     if (!req.query.ref || user.identityRef !== req.query.ref) {
       return reply.code(400).send({ error: "REF_MISMATCH" });

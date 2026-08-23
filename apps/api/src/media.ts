@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { sniffContentType, matchesDeclared, SNIFF_BYTES } from "./magicBytes.js";
 
 // Media (lot photos/videos, disease-test certs) is uploaded straight from the
 // browser to object storage via a presigned PUT — bytes never touch the API.
@@ -92,4 +93,55 @@ export async function presignUpload(input: PresignInput): Promise<PresignResult>
   );
 
   return { uploadUrl, key, expiresInSecs: PRESIGN_TTL_SECS, maxBytes };
+}
+
+export interface VerifyResult {
+  key: string;
+  contentType: SniffedTypeOrNull;
+  ok: boolean;
+}
+type SniffedTypeOrNull = ReturnType<typeof sniffContentType>;
+
+/**
+ * Confirm an uploaded object is what it claimed to be.
+ *
+ * The presigned URL signs the declared content type and size, but not the
+ * bytes — so a client can perfectly legally PUT an HTML page under
+ * `image/jpeg`. We read only the first {@link SNIFF_BYTES} back with a ranged
+ * GET (cheap even for a 500 MB video) and check the file signature. A mismatch
+ * deletes the object: leaving it in the bucket means it stays reachable at a
+ * URL we hand out.
+ *
+ * Callers must treat an unverified key as unusable — nothing should be attached
+ * to a lot until this passes.
+ */
+export async function verifyUpload(key: string, declaredContentType: string): Promise<VerifyResult> {
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) throw new Error("S3_BUCKET_NOT_CONFIGURED");
+  if (!ALLOWED.has(declaredContentType)) {
+    throw new Error(`UNSUPPORTED_CONTENT_TYPE:${declaredContentType}`);
+  }
+
+  let head: Uint8Array;
+  try {
+    const res = await s3().send(
+      new GetObjectCommand({ Bucket: bucket, Key: key, Range: `bytes=0-${SNIFF_BYTES - 1}` }),
+    );
+    head = await res.Body!.transformToByteArray();
+  } catch {
+    throw new Error("OBJECT_NOT_FOUND");
+  }
+
+  const sniffed = sniffContentType(head);
+  const ok = sniffed != null && matchesDeclared(sniffed, declaredContentType);
+
+  if (!ok) {
+    // Best-effort cleanup — a failed delete shouldn't turn a rejection into a
+    // 500, but the key is still refused either way.
+    await s3()
+      .send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
+      .catch(() => undefined);
+  }
+
+  return { key, contentType: sniffed, ok };
 }

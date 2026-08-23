@@ -27,7 +27,7 @@ interface LotDetail {
 // generic site card.
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const data = (await getLot(params.id)) as LotDetail | null;
-  if (!data?.lot) return { title: "Lot not found — Brindle" };
+  if (!data?.lot) return { title: "Lot not found" };
 
   const { lot } = data;
   const name = lot.bullName ?? `Lot ${lot.lotNumber}`;
@@ -39,7 +39,8 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     `. Opening at ${opening} in ${lot.auction.name}.`;
 
   return {
-    title: `${name} — ${lot.auction.name} | Brindle`,
+    // The root layout appends " | Brindle" via its title template.
+    title: `${name} — ${lot.auction.name}`,
     description,
     openGraph: { title: `${name} — ${seller}`, description, type: "website" },
     twitter: { card: "summary", title: `${name} — ${seller}`, description },

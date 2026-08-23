@@ -1,3 +1,5 @@
+import { useDevFallback } from "./env.js";
+
 // Identity verification port. Same adapter shape as the payment gateway: a real
 // implementation (Persona) and a dev fallback, chosen by whether a key is
 // configured, so the rest of the app never has to know which one is live.
@@ -54,9 +56,9 @@ export function makeIdentityProvider(): IdentityProvider {
   const apiKey = process.env.PERSONA_API_KEY;
   const templateId = process.env.PERSONA_TEMPLATE_ID;
   if (!apiKey || !templateId) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("PERSONA_API_KEY and PERSONA_TEMPLATE_ID are required in production");
-    }
+    // Throws on anything that isn't a local dev box. A staging deployment that
+    // silently self-approves identity is worse than one that won't start.
+    useDevFallback("identity", ["PERSONA_API_KEY", "PERSONA_TEMPLATE_ID"]);
     return new DevIdentityProvider();
   }
   return new PersonaIdentityProvider(apiKey, templateId);

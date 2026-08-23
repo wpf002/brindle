@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { wsBase } from "../lib/api";
-import { getToken, getSession, onAuthChange, openSignIn } from "../lib/session";
+import { getSession, onAuthChange, openSignIn } from "../lib/session";
 import { formatCents } from "../lib/format";
 
 function dollarsToCents(input: string): bigint {
@@ -33,20 +33,19 @@ export function BidBox({ auctionId, lotId, initialPriceCents, incrementCents, un
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const sync = () => {
-      const has = Boolean(getToken());
-      setSignedIn(has);
-      if (!has) { setCreditApproved(false); return; }
-      void getSession().then((s) => setCreditApproved(Boolean(s?.creditApproved)));
-    };
+    const sync = () => void getSession().then((s) => {
+      setSignedIn(s != null);
+      setCreditApproved(Boolean(s?.creditApproved));
+    });
     sync();
     return onAuthChange(sync);
   }, []);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) { setConnected(false); return; }
-    const socket = new WebSocket(`${wsBase()}/auctions/${auctionId}/ws?token=${token}`);
+    if (!signedIn) { setConnected(false); return; }
+    // No token in the URL: the session cookie rides the WebSocket handshake
+    // like any other request, and a token in a URL ends up in proxy logs.
+    const socket = new WebSocket(`${wsBase()}/auctions/${auctionId}/ws`);
     ws.current = socket;
     socket.onopen = () => setConnected(true);
     socket.onclose = () => setConnected(false);
