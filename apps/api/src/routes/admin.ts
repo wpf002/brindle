@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { prisma, CreditStatus, NotificationType, AdminRole } from "@brindle/db";
 import { requireAdmin, requireOperator, requireOwner, revokeAllSessions } from "../auth.js";
 import { syncDataMart, DEFAULT_REPORTS } from "../datamart.js";
+import { generateMarketReports } from "../marketReport.js";
 import { closeExpiredLots } from "../lotCloser.js";
 import { notify } from "../notify.js";
 import { audit } from "../audit.js";
@@ -57,14 +58,33 @@ export async function adminRoutes(app: FastifyInstance) {
     },
   );
 
-  app.post<{ Body: { days?: number; slugs?: string[] } }>(
+  app.post<{ Body: { days?: number; slugs?: string[]; publish?: boolean } }>(
     "/admin/market/sync",
     { preHandler: requireOperator },
     async (req) => {
       const days = Math.min(Math.max(req.body?.days ?? 3, 1), 30);
       const results = await syncDataMart(days, req.body?.slugs);
-      await audit(req, "market.sync", undefined, { days, results });
-      return { results, availableReports: DEFAULT_REPORTS };
+
+      // Write up what just landed, unless the caller only wanted the numbers.
+      // Pass publish:false to backfill price history without filling the news
+      // feed with months of retrospective daily reports.
+      const posts = req.body?.publish === false ? [] : await generateMarketReports(days);
+
+      await audit(req, "market.sync", undefined, { days, results, published: posts.length });
+      return { results, posts, availableReports: DEFAULT_REPORTS };
+    },
+  );
+
+  // Re-run the write-ups without re-fetching from USDA — useful after changing
+  // the generator, or to fill in a day whose rows arrived late.
+  app.post<{ Body: { days?: number } }>(
+    "/admin/market/publish",
+    { preHandler: requireOperator },
+    async (req) => {
+      const days = Math.min(Math.max(req.body?.days ?? 3, 1), 30);
+      const posts = await generateMarketReports(days);
+      await audit(req, "market.publish", undefined, { days, published: posts.length });
+      return { posts };
     },
   );
 

@@ -94,6 +94,11 @@ Two intervals run inside the API process:
   clock runs out with no further bids needs someone to notice. Soft-close
   extension lives in the pure resolver; this is what catches plain expiry.
 - **session prune** (hourly) — deletes session rows a week past expiry.
+- **market sync** (`MARKET_SYNC_MS`, default 6h) — pulls the day's USDA prices
+  and writes them up as a Market Report post. Every 6 hours rather than daily
+  because AMS publishes once per business day but not at a fixed hour; both
+  halves are idempotent, so extra runs rewrite rather than duplicate. Set
+  `MARKET_SYNC_MS=0` to turn it off and drive it externally instead.
 
 Both take a Redis lease first (`withLock`, `SET key NX PX` with a
 compare-and-delete release), so exactly one instance runs each per tick. Replicas
@@ -143,8 +148,36 @@ curl -X POST "$API/admin/market/sync" \
 
 Requires an `OPERATOR` session; the sync is written to the audit log.
 
-Idempotent on the report natural key, so it's safe to run on a schedule (daily
-is plenty — these reports publish once per business day).
+Idempotent on the report natural key, so it's safe to run on a schedule. The API
+already does this every 6 hours on its own (see **Scheduled work**); the endpoint
+is for forcing a pull or backfilling history.
+
+The sync also publishes a Market Report news post for each date it touched. Pass
+`{"publish": false}` when backfilling months of price history, or the news feed
+fills with retrospective daily reports. To re-run only the write-ups — after
+changing the generator, or for a day whose rows landed late:
+
+```bash
+curl -X POST "$API/admin/market/publish" \
+  -b "brindle_session=$SESSION_COOKIE" \
+  -H 'content-type: application/json' \
+  -d '{"days":3}'
+```
+
+Posts are slugged `market-report-YYYY-MM-DD`, so a re-run rewrites that day
+rather than publishing a second copy — which is what makes a late USDA revision
+correct the existing post.
+
+Two things the generator gets right that are easy to get wrong, and that the
+tests in `packages/market-data/src/report.test.ts` lock down:
+
+- **Live and dressed prices are never blended.** Live is per hundredweight on
+  the hoof (~$225), dressed is per hundredweight of hanging carcass (~$355), and
+  they describe the same cattle. Averaging them yields a number that means
+  nothing, and the gap between them is the dressing percentage, not news.
+- **"All Beef Type" rows are roll-ups, not another class.** They already contain
+  the steer, heifer, and mixed rows for the same quote. Summing everything
+  double-counts every animal.
 
 Note this is packer-reported **fed cattle** pricing, not sale-barn feeder-calf
 averages. Feeder-cattle auction reports live in the separate MyMarketNews API,

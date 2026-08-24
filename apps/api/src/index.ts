@@ -36,6 +36,8 @@ import { ringRoutes } from "./routes/ring.js";
 import Redis from "ioredis";
 import { prisma } from "@brindle/db";
 import { closeExpiredLots } from "./lotCloser.js";
+import { syncDataMart } from "./datamart.js";
+import { generateMarketReports } from "./marketReport.js";
 import { initObservability } from "./observability.js";
 import { withLock } from "./lock.js";
 import { makeStripeClient } from "./stripeClient.js";
@@ -84,9 +86,33 @@ const sessionSweep = setInterval(() => {
 }, 3600_000);
 sessionSweep.unref();
 
+// Pull the day's USDA prices and write them up. Runs every 6 hours rather than
+// daily: AMS publishes once per business day but not at a fixed hour, and both
+// halves are idempotent — the price upsert is keyed on the report's natural key
+// and the post's slug is derived from its date, so a repeat run rewrites rather
+// than duplicates. The lease means only one instance does the work.
+//
+// Set MARKET_SYNC_MS=0 to turn it off and drive the sync from an external
+// scheduler against /admin/market/sync instead.
+const MARKET_SYNC_MS = Number(process.env.MARKET_SYNC_MS ?? 6 * 3600_000);
+const marketSync = MARKET_SYNC_MS > 0
+  ? setInterval(() => {
+      void withLock(lockRedis, "brindle:lock:market-sync", MARKET_SYNC_MS, async () => {
+        const results = await syncDataMart(2);
+        const posts = await generateMarketReports(2);
+        app.log.info(
+          { results, published: posts.filter((p) => p.published).map((p) => p.slug) },
+          "market sync complete",
+        );
+      }).catch((err) => app.log.error({ err }, "market sync failed"));
+    }, MARKET_SYNC_MS)
+  : null;
+marketSync?.unref();
+
 app.addHook("onClose", async () => {
   clearInterval(closeSweep);
   clearInterval(sessionSweep);
+  if (marketSync) clearInterval(marketSync);
   lockRedis.disconnect();
   await sequencer.shutdown();
   await ring.shutdown();

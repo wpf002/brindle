@@ -179,3 +179,10 @@ export function normalizeDataMartRow(row: DataMartDetailRow): ComparableSale | n
     source: `DATAMART-${row.slug_id}`,
   };
 }
+
+// Automated Market Report generation from ingested USDA rows.
+export {
+  buildMarketPost, weightedAverageCents, formatCwt, formatClassName, formatReportDate,
+  MARKET_DESK_AUTHOR, MARKET_DESK_TITLE, basisOf,
+  type ReportRow, type MarketPostDraft, type BuildInput, type PriceBasis,
+} from "./report.js";

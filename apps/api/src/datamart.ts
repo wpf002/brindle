@@ -14,6 +14,16 @@ export const DEFAULT_REPORTS = [
   { slug: "2477", label: "5 Area Weekly Weighted Average Direct Slaughter Cattle (LM_CT150)" },
 ];
 
+/**
+ * The report the daily news write-up is built from.
+ *
+ * It matters which: 2466 is one day's trade, 2477 is the week to date and
+ * therefore contains the same cattle again. They share report dates and class
+ * names, so anything summarising "the day" has to name its source explicitly or
+ * it will count animals twice.
+ */
+export const DAILY_REPORT_SOURCE = "DATAMART-2466";
+
 interface DetailResponse {
   results?: DataMartDetailRow[];
   stats?: Record<string, number>;
