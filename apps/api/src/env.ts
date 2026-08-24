@@ -28,6 +28,24 @@ export function isLocalDev(): boolean {
   return deployEnv() === "development";
 }
 
+/**
+ * Whether this deployment settles money through the platform at all.
+ *
+ * A marketplace can legitimately run without it: `CONTRACT` lots hammer to a
+ * forward contract and the buyer and seller settle between themselves, which is
+ * how most sale barns have always worked. Integrated payment is the addition,
+ * not the baseline.
+ *
+ * This is deliberately *not* the same as the missing-key fallback. A stubbed
+ * gateway pretends to move money that never moves; turning payments off says
+ * the feature is unavailable and refuses the request. Silence about it is the
+ * dangerous option, so anything payment-shaped returns a clear error and the
+ * seller console stops asking people to connect a payout account.
+ */
+export function paymentsEnabled(): boolean {
+  return (process.env.PAYMENTS_ENABLED ?? "true").toLowerCase() !== "false";
+}
+
 // Recorded so boot can log exactly which stubs are live, and /ready can report
 // them — an operator should never have to guess whether identity checks on this
 // box are real.

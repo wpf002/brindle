@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import {
   prisma,
   SettlementMode,
@@ -15,6 +15,7 @@ import {
 import { PrismaLotStateStore } from "../sequencer/prismaStore.js";
 import { requireAuth } from "../auth.js";
 import { makePaymentService, PLATFORM_FEE_BPS } from "../settlement.js";
+import { paymentsEnabled } from "../env.js";
 
 // Compute the lot total from the winning per-unit price using the centralized
 // cattle math — never inline arithmetic here.
@@ -37,13 +38,20 @@ function lotTotalCents(
 }
 
 export async function settlementRoutes(app: FastifyInstance) {
-  const payments = makePaymentService();
+  // Built lazily: constructing it at registration would throw at boot on a
+  // deployment that runs without payments.
+  const payments = paymentsEnabled() ? makePaymentService() : null;
+
+  /** Refuse payment routes outright when this deployment has payments off. */
+  const requirePayments = async (_req: FastifyRequest, reply: FastifyReply) => {
+    if (!payments) await reply.code(503).send({ error: "PAYMENTS_DISABLED" });
+  };
   const store = new PrismaLotStateStore();
 
   // Seller (or system) places the authorization hold once a lot is won.
   app.post<{ Params: { lotId: string } }>(
     "/lots/:lotId/settle",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requirePayments] },
     async (req, reply) => {
       const lot = await prisma.lot.findUnique({
         where: { id: req.params.lotId },
@@ -66,7 +74,7 @@ export async function settlementRoutes(app: FastifyInstance) {
       }
 
       const hammerCents = lotTotalCents(lot.priceUnit, state.highBidCents, lot);
-      const record = await payments.holdAtHammer({
+      const record = await payments!.holdAtHammer({
         lotId: lot.id,
         buyerId: state.highBidderId,
         sellerId: lot.auction.sellerId,
@@ -103,7 +111,7 @@ export async function settlementRoutes(app: FastifyInstance) {
   // Seller confirms the lot ships → capture the held funds.
   app.post<{ Params: { paymentId: string } }>(
     "/payments/:paymentId/capture",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requirePayments] },
     async (req, reply) => {
       const payment = await prisma.payment.findUnique({ where: { id: req.params.paymentId } });
       if (!payment) return reply.code(404).send({ error: "PAYMENT_NOT_FOUND" });
@@ -112,7 +120,7 @@ export async function settlementRoutes(app: FastifyInstance) {
       }
       if (!payment.stripePaymentId) return reply.code(409).send({ error: "NO_GATEWAY_REF" });
 
-      await payments.captureOnConfirm(payment.lotId, payment.stripePaymentId);
+      await payments!.captureOnConfirm(payment.lotId, payment.stripePaymentId);
       const updated = await prisma.payment.update({
         where: { id: payment.id },
         data: { status: PaymentStatus.CAPTURED },
@@ -124,7 +132,7 @@ export async function settlementRoutes(app: FastifyInstance) {
   // Refund after capture (dispute resolution). Optional partial amount in cents.
   app.post<{ Params: { paymentId: string }; Body: { amountCents?: string | number } }>(
     "/payments/:paymentId/refund",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requirePayments] },
     async (req, reply) => {
       const payment = await prisma.payment.findUnique({ where: { id: req.params.paymentId } });
       if (!payment) return reply.code(404).send({ error: "PAYMENT_NOT_FOUND" });
@@ -134,7 +142,7 @@ export async function settlementRoutes(app: FastifyInstance) {
       if (!payment.stripePaymentId) return reply.code(409).send({ error: "NO_GATEWAY_REF" });
 
       const amount = req.body?.amountCents != null ? BigInt(req.body.amountCents) : null;
-      await payments.refund(payment.lotId, payment.stripePaymentId, amount);
+      await payments!.refund(payment.lotId, payment.stripePaymentId, amount);
       const updated = await prisma.payment.update({
         where: { id: payment.id },
         data: { status: PaymentStatus.REFUNDED },

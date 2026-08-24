@@ -11,6 +11,7 @@ import {
 import { parseEpdSet, ANGUS_TRAITS } from "@brindle/genetics";
 import { evaluateShipment, type Species } from "@brindle/compliance";
 import { requireAuth } from "../auth.js";
+import { paymentsEnabled } from "../env.js";
 
 function speciesFor(category: string): Species {
   if (category === "SHEEP") return "SHEEP";
@@ -35,12 +36,22 @@ export async function consoleRoutes(app: FastifyInstance) {
   }>("/console/auctions", { preHandler: requireAuth }, async (req, reply) => {
     const b = req.body ?? {};
     if (!b.name || !b.startsAt) return reply.code(400).send({ error: "NAME_AND_START_REQUIRED" });
+
+    // Without integrated payment there is nothing to settle an
+    // INTEGRATED_PAYMENT lot through, so CONTRACT is the only honest default —
+    // buyer and seller settle between themselves off the platform.
+    const mode = paymentsEnabled()
+      ? (b.settlementMode ?? SettlementMode.INTEGRATED_PAYMENT)
+      : SettlementMode.CONTRACT;
+    if (!paymentsEnabled() && b.settlementMode === SettlementMode.INTEGRATED_PAYMENT) {
+      return reply.code(409).send({ error: "PAYMENTS_DISABLED" });
+    }
     const auction = await prisma.auction.create({
       data: {
         sellerId: req.session!.userId,
         name: b.name,
         format: b.format ?? AuctionFormat.TIMED_ONLINE,
-        settlementMode: b.settlementMode ?? SettlementMode.INTEGRATED_PAYMENT,
+        settlementMode: mode,
         startsAt: new Date(b.startsAt),
         endsAt: b.endsAt ? new Date(b.endsAt) : null,
         buyerPremiumBps: b.buyerPremiumBps ?? 0,

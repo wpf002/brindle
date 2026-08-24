@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "@brindle/db";
 import { requireAuth } from "../auth.js";
 import { makeStripeClient } from "../stripeClient.js";
+import { paymentsEnabled } from "../env.js";
 
 // Seller onboarding onto Stripe Connect Express, so a seller's INTEGRATED_PAYMENT
 // lots have a real destination account to settle to. Creates the Express account
@@ -9,6 +10,9 @@ import { makeStripeClient } from "../stripeClient.js";
 // (re)started — Account Links expire and can't be reused across page loads.
 export async function stripeConnectRoutes(app: FastifyInstance) {
   app.post("/console/stripe/onboard", { preHandler: requireAuth }, async (req, reply) => {
+    // Off by configuration is a different answer from misconfigured, and a
+    // seller deserves to be told which.
+    if (!paymentsEnabled()) return reply.code(503).send({ error: "PAYMENTS_DISABLED" });
     const stripe = makeStripeClient();
     if (!stripe) return reply.code(503).send({ error: "STRIPE_NOT_CONFIGURED" });
 
@@ -41,6 +45,7 @@ export async function stripeConnectRoutes(app: FastifyInstance) {
   // instant the seller lands back. Ongoing changes (an account later disabled)
   // arrive via the `account.updated` webhook instead of waiting for a refresh.
   app.get("/console/stripe/status", { preHandler: requireAuth }, async (req) => {
+    if (!paymentsEnabled()) return { enabled: false, connected: false, onboarded: false };
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.session!.userId } });
     if (!user.stripeAccountId) return { connected: false, onboarded: false };
 

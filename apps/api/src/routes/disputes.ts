@@ -4,9 +4,11 @@ import { disputeTransition, type DisputeAction } from "@brindle/settlement";
 import { requireAuth, requireOperator } from "../auth.js";
 import { audit } from "../audit.js";
 import { makePaymentService } from "../settlement.js";
+import { paymentsEnabled } from "../env.js";
 
 export async function disputeRoutes(app: FastifyInstance) {
-  const payments = makePaymentService();
+  // See settlementRoutes — null when this deployment runs without payments.
+  const payments = paymentsEnabled() ? makePaymentService() : null;
 
   // Buyer files a claim on a won lot. Any held payment is flagged DISPUTED so it
   // can't be captured while the claim is open.
@@ -61,7 +63,7 @@ export async function disputeRoutes(app: FastifyInstance) {
       if (!t.ok) return reply.code(409).send({ error: t.reason });
 
       const payment = await prisma.payment.findUnique({ where: { lotId: dispute.lotId } });
-      if (payment?.stripePaymentId) {
+      if (payments && payment?.stripePaymentId) {
         if (t.refundsFunds) {
           await payments.refund(dispute.lotId, payment.stripePaymentId, null);
           await prisma.payment.update({ where: { id: payment.id }, data: { status: PaymentStatus.REFUNDED } });
