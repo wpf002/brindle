@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@brindle/ui", "@brindle/core", "@brindle/genetics"],
+  transpilePackages: ["@brindle/ui", "@brindle/core", "@brindle/genetics", "@brindle/market-data"],
   webpack: (config) => {
     // Workspace packages use NodeNext ".js" import specifiers that resolve to
     // ".ts" sources; teach webpack the same mapping tsc uses.

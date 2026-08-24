@@ -5,6 +5,9 @@ import {
   type CatalogLot, type SellerSummary, type NewsSummary, type MarketRow,
 } from "../lib/api";
 import { formatCents, priceUnitLabel } from "../lib/format";
+// Shared with the report generator, so the hero card and the written market
+// reports name a class the same way.
+import { formatClassName } from "@brindle/market-data";
 
 export const dynamic = "force-dynamic";
 
@@ -137,7 +140,7 @@ function MarketSnapshot({ rows, asOf }: { rows: MarketRow[]; asOf: string | null
       <ul className="market-card-list">
         {top.map((r) => (
           <li key={`${r.category}-${r.wtLowLbs}`}>
-            <span className="cls">{titleCaseClass(r.category)}</span>
+            <span className="cls">{formatClassName(r.category)}</span>
             <span className="val tabular">{formatCents(String(r.avgCentsPerCwt))}<span className="u">/cwt</span></span>
           </li>
         ))}
@@ -145,13 +148,6 @@ function MarketSnapshot({ rows, asOf }: { rows: MarketRow[]; asOf: string | null
       <Link href="/market" className="market-card-link">All USDA Prices →</Link>
     </aside>
   );
-}
-
-/** AMS reports classes in caps ("STEER — DRESSED DELIVERED"); soften for display. */
-function titleCaseClass(raw: string): string {
-  return raw
-    .toLowerCase()
-    .replace(/(^|[\s—-])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 }
 
 function LotCard({ lot }: { lot: CatalogLot }) {
