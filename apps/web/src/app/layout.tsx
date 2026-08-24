@@ -16,6 +16,20 @@ const DESCRIPTION =
   "Breeders run their own timed and live cattle sales. Verified EPDs, side-by-side " +
   "comparison, and one credit approval that works across every seller.";
 
+/**
+ * Every route renders per-request.
+ *
+ * Required by the nonce-based CSP in middleware.ts. The nonce is generated per
+ * request, but a statically prerendered page has its HTML — and whatever nonce
+ * was current at build time — frozen. The header and the script tags then never
+ * match, and the browser blocks every script on the page: no hydration, no
+ * sign-in, no bidding, while the server-rendered HTML still looks fine.
+ *
+ * The cost is near zero here. Every page already fetches with `cache: no-store`
+ * because auction prices must not be stale, so there was little to prerender.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
