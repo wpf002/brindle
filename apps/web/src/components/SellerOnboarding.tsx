@@ -1,17 +1,20 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { authed, getMe, humanizeError, type Account } from "../lib/session";
+import { getFeatures, type Features } from "../lib/api";
 
 // The seller's path to actually taking money: verify identity, connect Stripe.
 // Shown as a checklist because "why can't I sell yet?" is otherwise invisible.
 export function SellerOnboarding() {
   const [account, setAccount] = useState<Account | null>(null);
+  const [features, setFeatures] = useState<Features | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    const me = await getMe();
+    const [me, f] = await Promise.all([getMe(), getFeatures()]);
     setAccount(me?.account ?? null);
+    setFeatures(f);
   }, []);
 
   useEffect(() => {
@@ -53,10 +56,12 @@ export function SellerOnboarding() {
     }
   }
 
-  if (!account) return null;
+  if (!account || !features) return null;
 
+  // A step for a feature this deployment doesn't have is a button that always
+  // fails. Leave it out rather than let a seller hit the wall.
   const steps = [
-    {
+    features.identityVerification && {
       key: "identity",
       done: account.identityVerified,
       title: "Verify Your Identity",
@@ -69,7 +74,7 @@ export function SellerOnboarding() {
         </button>
       ),
     },
-    {
+    features.payments && {
       key: "stripe",
       done: account.stripeOnboarded,
       title: "Connect Payouts",
@@ -84,7 +89,7 @@ export function SellerOnboarding() {
         </button>
       ),
     },
-  ];
+  ].filter((s): s is Exclude<typeof s, false> => s !== false);
 
   const remaining = steps.filter((s) => !s.done).length;
   if (remaining === 0) return null; // nothing left to nag about

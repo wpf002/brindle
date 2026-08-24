@@ -1,6 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { authed, humanizeError } from "../lib/session";
+import { getFeatures } from "../lib/api";
 
 interface PresignResult {
   uploadUrl: string;
@@ -20,7 +21,14 @@ export function PhotoUpload({ onUploaded, prefix = "lots" }: {
   const [uploaded, setUploaded] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // null while we're still finding out; avoids flashing a picker that then
+  // turns out to be unusable.
+  const [canUpload, setCanUpload] = useState<boolean | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    void getFeatures().then((f) => setCanUpload(f.mediaUploads));
+  }, []);
 
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -42,6 +50,14 @@ export function PhotoUpload({ onUploaded, prefix = "lots" }: {
           body: file,
         });
         if (!put.ok) throw new Error("UPLOAD_FAILED");
+
+        // The presigned URL signs the declared content type, not the bytes, so
+        // the server reads the stored object back and checks its signature.
+        // A key that hasn't passed this must not be attached to a lot.
+        await authed("/media/confirm", {
+          method: "POST",
+          body: JSON.stringify({ key: presign.key, contentType: file.type }),
+        });
         keys.push(presign.key);
       } catch (err) {
         const raw = err instanceof Error ? err.message : "";
@@ -64,6 +80,18 @@ export function PhotoUpload({ onUploaded, prefix = "lots" }: {
     if (inputRef.current) inputRef.current.value = "";
   }
 
+  if (canUpload === false) {
+    return (
+      <div className="field">
+        <span className="label">Photos</span>
+        <div className="statusmsg info">
+          Photo uploads aren&rsquo;t set up on this environment yet, so lots will
+          show a placeholder. Everything else about the lot works normally.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <label className="field">
       <span className="label">Photos</span>
@@ -74,7 +102,7 @@ export function PhotoUpload({ onUploaded, prefix = "lots" }: {
         accept="image/jpeg,image/png,image/webp"
         multiple
         onChange={onFiles}
-        disabled={busy}
+        disabled={busy || canUpload === null}
       />
       {busy && <span className="dim" style={{ fontSize: 12.5 }}>Uploading…</span>}
       {uploaded.length > 0 && (

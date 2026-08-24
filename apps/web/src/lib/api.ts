@@ -160,3 +160,37 @@ export async function getNewsPost(slug: string): Promise<NewsPost | null> {
   const { post } = await r.json();
   return post;
 }
+
+// ---------- deployment capabilities ----------
+/**
+ * What this deployment can actually do. Read once on load so the UI can leave
+ * out flows that would dead-end — a payout step with payments switched off, a
+ * photo picker with no bucket behind it. Absent beats broken.
+ *
+ * Defaults to everything-on if the API can't be reached, so a transient blip
+ * doesn't silently strip the interface down.
+ */
+export interface Features {
+  payments: boolean;
+  identityVerification: boolean;
+  email: boolean;
+  mediaUploads: boolean;
+}
+
+const ALL_ON: Features = {
+  payments: true, identityVerification: true, email: true, mediaUploads: true,
+};
+
+let featuresCache: Features | null = null;
+
+export async function getFeatures(): Promise<Features> {
+  if (featuresCache) return featuresCache;
+  try {
+    const r = await fetch(`${API}/config`, { cache: "no-store" });
+    if (!r.ok) return ALL_ON;
+    featuresCache = ((await r.json()) as { features: Features }).features;
+    return featuresCache;
+  } catch {
+    return ALL_ON;
+  }
+}

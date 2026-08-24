@@ -9,6 +9,25 @@ export async function health(app: FastifyInstance) {
   // blip doesn't cause an orchestrator to kill an otherwise-healthy process.
   app.get("/health", async () => ({ ok: true, service: "brindle-api" }));
 
+  /**
+   * What this deployment can actually do. Public and unauthenticated — the web
+   * app reads it on load so it can hide flows that would dead-end.
+   *
+   * Without it the UI offers buttons that always fail: a "Connect Payouts" step
+   * on a deployment with payments off, a photo picker with nowhere to upload to.
+   * A feature that isn't there should be absent, not broken.
+   */
+  app.get("/config", async () => ({
+    features: {
+      payments: paymentsEnabled(),
+      identityVerification: identityVerificationEnabled(),
+      email: emailEnabled(),
+      // Uploads go straight to object storage; without a bucket there is
+      // nowhere for them to go.
+      mediaUploads: Boolean(process.env.S3_BUCKET),
+    },
+  }));
+
   // Readiness: can this instance actually serve traffic? Checks the database
   // and Redis, and reports 503 if either is unreachable, so a load balancer
   // routes around a broken instance instead of failing user requests.

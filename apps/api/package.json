@@ -12,7 +12,8 @@
     "loadtest": "tsx src/loadtest.ts",
     "seed": "tsx src/seed-dev.ts",
     "admin:grant": "tsx src/grant-admin.ts",
-    "backup": "tsx src/backup.ts"
+    "backup": "tsx src/backup.ts",
+    "seed:demo": "tsx src/seed-demo.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.620.0",

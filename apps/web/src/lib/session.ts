@@ -149,6 +149,10 @@ const ERROR_TEXT: Record<string, string> = {
   NOT_LOT_SELLER: "That lot belongs to a different seller account.",
   SELLER_NOT_FOUND: "We couldn't find that seller.",
   UNAUTHENTICATED: "Sign in to do that.",
+  PAYMENTS_DISABLED: "Payments aren't switched on for this environment. Lots settle directly between buyer and seller.",
+  IDENTITY_VERIFICATION_DISABLED: "Identity verification isn't switched on for this environment.",
+  EMAIL_DISABLED: "Email isn't set up on this environment yet, so we can't send that.",
+  S3_BUCKET_NOT_CONFIGURED: "Photo storage isn't set up on this environment yet.",
 };
 
 /** Turn a thrown error (often a raw API error code) into copy a seller can act on. */

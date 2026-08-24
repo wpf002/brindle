@@ -10,7 +10,7 @@ import { generateTotpSecret, verifyTotp, totpUri, generateRecoveryCode } from ".
 import { nextBuyerNumber } from "../buyers.js";
 import { notify } from "../notify.js";
 import { audit } from "../audit.js";
-import { emailEnabled } from "../env.js";
+import { emailEnabled, isLocalDev } from "../env.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -370,7 +370,9 @@ export async function authRoutes(app: FastifyInstance) {
 
   // ── dev-only convenience sign-in ─────────────────────────────
   app.post<{ Body: { email?: string; name?: string } }>("/auth/dev-login", async (req, reply) => {
-    if (process.env.NODE_ENV === "production") return reply.code(404).send({ error: "NOT_FOUND" });
+    // isLocalDev(), not NODE_ENV — a staging box is a real deployment and must
+    // not hand out passwordless sessions.
+    if (!isLocalDev()) return reply.code(404).send({ error: "NOT_FOUND" });
 
     const email = req.body?.email?.trim().toLowerCase();
     if (!email) return reply.code(400).send({ error: "EMAIL_REQUIRED" });

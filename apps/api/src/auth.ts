@@ -127,12 +127,40 @@ function extractToken(req: FastifyRequest): string | null {
   return typeof q === "string" ? q : null;
 }
 
+/**
+ * How strictly the browser scopes the session cookie.
+ *
+ * `lax` is right — and the default — when the API and web app share a
+ * registrable domain (`brindle.com` and `api.brindle.com`). It is wrong the
+ * moment they don't, and the failure is silent and total: the browser accepts
+ * the cookie and then never sends it back, so every request looks signed out
+ * while the server thinks it issued a session perfectly well.
+ *
+ * That's not hypothetical. Railway's generated hostnames sit under
+ * `up.railway.app`, which is a public suffix, so `api-x.up.railway.app` and
+ * `web-y.up.railway.app` are different *sites* — as unrelated as two separate
+ * domains. Deployments like that need `none`.
+ *
+ * `none` is a genuinely weaker posture, since the cookie then rides cross-site
+ * requests. What holds the line is the CORS allowlist: every mutating route
+ * takes a JSON body, which forces a preflight, and a preflight from an origin
+ * that isn't allowlisted never becomes a real request. Prefer a shared parent
+ * domain and `lax` once you have one.
+ */
+function cookieSameSite(): "lax" | "strict" | "none" {
+  const raw = (process.env.SESSION_COOKIE_SAMESITE ?? "lax").toLowerCase();
+  return raw === "none" || raw === "strict" ? raw : "lax";
+}
+
 export function sessionCookieOptions(expiresAt: Date) {
   const prod = process.env.NODE_ENV === "production";
+  const sameSite = cookieSameSite();
   return {
     httpOnly: true, // page JS can never read it
-    secure: prod, // HTTPS-only in production
-    sameSite: "lax" as const, // API and web share a registrable domain
+    // Browsers reject SameSite=None without Secure, which would drop the
+    // cookie entirely — the exact failure this setting exists to fix.
+    secure: prod || sameSite === "none",
+    sameSite,
     path: "/",
     expires: expiresAt,
   };
