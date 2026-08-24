@@ -24,7 +24,7 @@ export default function ForgotPassword() {
 
   return (
     <div className="signin-wrap">
-      <h1>Reset your password</h1>
+      <h1>Reset Your Password</h1>
       <div className="signin-card">
         {sent ? (
           <>
@@ -33,7 +33,7 @@ export default function ForgotPassword() {
               way. It expires in an hour.
             </p>
             <Link href="/" className="btn btn-primary btn-lg" style={{ textAlign: "center" }}>
-              Back to the sales
+              Back to the Sales
             </Link>
           </>
         ) : (
@@ -49,7 +49,7 @@ export default function ForgotPassword() {
                 onKeyDown={(e) => e.key === "Enter" && email.trim() && submit()} />
             </label>
             <button className="btn btn-primary btn-lg" onClick={submit} disabled={busy || !email.trim()}>
-              {busy ? "Sending…" : "Send reset link"}
+              {busy ? "Sending…" : "Send Reset Link"}
             </button>
           </>
         )}

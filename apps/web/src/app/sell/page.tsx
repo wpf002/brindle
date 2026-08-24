@@ -145,10 +145,10 @@ export default function Sell() {
     return (
       <main className="wrap section">
         <div className="signin-wrap">
-          <div className="eyebrow">Seller console</div>
-          <h1>Run your own genetics sale</h1>
+          <div className="eyebrow">Seller Console</div>
+          <h1>Run Your Own Genetics Sale</h1>
           <p className="muted">Sign in to build auctions, list lots with EPDs, and take them live.</p>
-          <button className="btn btn-primary btn-lg" style={{ marginTop: 20, maxWidth: 220 }} onClick={openSignIn}>Sign in to sell</button>
+          <button className="btn btn-primary btn-lg" style={{ marginTop: 20, maxWidth: 220 }} onClick={openSignIn}>Sign In to Sell</button>
         </div>
       </main>
     );
@@ -158,8 +158,8 @@ export default function Sell() {
 
   return (
     <main className="wrap section">
-      <div className="eyebrow">Seller console</div>
-      <h1 style={{ fontSize: 34, margin: "10px 0 20px" }}>Your sales</h1>
+      <div className="eyebrow">Seller Console</div>
+      <h1 style={{ fontSize: 34, margin: "10px 0 20px" }}>Your Sales</h1>
 
       {analytics && (
         <div className="dash-grid">
@@ -181,19 +181,19 @@ export default function Sell() {
       />
 
       <div className="card-form">
-        <h2>Your story</h2>
+        <h2>Your Story</h2>
         <p className="block-note" style={{ marginTop: -10 }}>Shown on your public seller page — the &ldquo;behind the brand&rdquo; profile buyers see.</p>
         <div className="form-grid">
-          <label className="field"><span className="label">Title / role</span><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Owner & General Manager" /></label>
-          <label className="field"><span className="label">Founded year</span><input className="input" value={founded} onChange={(e) => setFounded(e.target.value)} placeholder="1987" /></label>
+          <label className="field"><span className="label">Title / Role</span><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Owner & General Manager" /></label>
+          <label className="field"><span className="label">Founded Year</span><input className="input" value={founded} onChange={(e) => setFounded(e.target.value)} placeholder="1987" /></label>
         </div>
         <label className="field" style={{ marginBottom: 14 }}><span className="label">Bio</span>
           <textarea className="input" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Two or three paragraphs on the program's history and philosophy…" style={{ fontFamily: "inherit" }} />
         </label>
-        <label className="field" style={{ marginBottom: 16 }}><span className="label">Pull-quote</span>
+        <label className="field" style={{ marginBottom: 16 }}><span className="label">Pull-Quote</span>
           <input className="input" value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="A short, quotable line about how you run the program." />
         </label>
-        <button className="btn btn-primary" onClick={saveProfile}>Save story</button>
+        <button className="btn btn-primary" onClick={saveProfile}>Save Story</button>
       </div>
 
       <div className="card-form">
@@ -213,26 +213,26 @@ export default function Sell() {
           <label className="field"><span className="label">Name</span><input className="input" value={opName} onChange={(e) => setOpName(e.target.value)} placeholder="Home Place" /></label>
           <label className="field"><span className="label">Location</span><input className="input" value={opLoc} onChange={(e) => setOpLoc(e.target.value)} placeholder="Big Timber, Montana" /></label>
           <label className="field"><span className="label">Acres</span><input className="input" value={opAcres} onChange={(e) => setOpAcres(e.target.value)} /></label>
-          <label className="field"><span className="label">Herd size</span><input className="input" value={opHerd} onChange={(e) => setOpHerd(e.target.value)} /></label>
+          <label className="field"><span className="label">Herd Size</span><input className="input" value={opHerd} onChange={(e) => setOpHerd(e.target.value)} /></label>
         </div>
         <label className="field" style={{ marginBottom: 16 }}><span className="label">Description</span>
           <input className="input" value={opDesc} onChange={(e) => setOpDesc(e.target.value)} placeholder="What happens on this property" />
         </label>
-        <button className="btn btn-primary" onClick={addOperation} disabled={!opName || !opLoc || !opDesc}>Add operation</button>
+        <button className="btn btn-primary" onClick={addOperation} disabled={!opName || !opLoc || !opDesc}>Add Operation</button>
       </div>
 
       <div className="card-form">
-        <h2>New auction</h2>
+        <h2>New Auction</h2>
         <div className="form-grid">
-          <label className="field"><span className="label">Sale name</span><input className="input" value={aName} onChange={(e) => setAName(e.target.value)} placeholder="Spring Genetics Sale" /></label>
+          <label className="field"><span className="label">Sale Name</span><input className="input" value={aName} onChange={(e) => setAName(e.target.value)} placeholder="Spring Genetics Sale" /></label>
           <label className="field"><span className="label">Starts</span><input className="input" type="datetime-local" value={aStart} onChange={(e) => setAStart(e.target.value)} /></label>
-          <label className="field"><span className="label">Buyer premium %</span><input className="input" value={premium} onChange={(e) => setPremium(e.target.value)} /></label>
+          <label className="field"><span className="label">Buyer Premium %</span><input className="input" value={premium} onChange={(e) => setPremium(e.target.value)} /></label>
         </div>
-        <button className="btn btn-primary" onClick={createAuction} disabled={!aName}>Create auction</button>
+        <button className="btn btn-primary" onClick={createAuction} disabled={!aName}>Create Auction</button>
       </div>
 
       <div className="card-form">
-        <h2>Add genetics lot</h2>
+        <h2>Add Genetics Lot</h2>
         <div className="form-grid">
           <label className="field"><span className="label">Auction</span>
             <select className="input" value={lotAuction} onChange={(e) => setLotAuction(e.target.value)}>
@@ -241,16 +241,16 @@ export default function Sell() {
             </select>
           </label>
           <label className="field"><span className="label">Lot #</span><input className="input" value={lotNo} onChange={(e) => setLotNo(e.target.value)} /></label>
-          <label className="field"><span className="label">Bull name</span><input className="input" value={bull} onChange={(e) => setBull(e.target.value)} /></label>
+          <label className="field"><span className="label">Bull Name</span><input className="input" value={bull} onChange={(e) => setBull(e.target.value)} /></label>
           <label className="field"><span className="label">Doses</span><input className="input" value={doses} onChange={(e) => setDoses(e.target.value)} /></label>
-          <label className="field"><span className="label">Opening bid $</span><input className="input" value={start} onChange={(e) => setStart(e.target.value)} placeholder="25.00" /></label>
-          <label className="field"><span className="label">Photo credit</span><input className="input" value={photoCredit} onChange={(e) => setPhotoCredit(e.target.value)} placeholder="Photo: Jane Smith" /></label>
+          <label className="field"><span className="label">Opening Bid $</span><input className="input" value={start} onChange={(e) => setStart(e.target.value)} placeholder="25.00" /></label>
+          <label className="field"><span className="label">Photo Credit</span><input className="input" value={photoCredit} onChange={(e) => setPhotoCredit(e.target.value)} placeholder="Photo: Jane Smith" /></label>
           <PhotoUpload onUploaded={setPhotoKeys} />
         </div>
         <label className="field" style={{ marginBottom: 16 }}><span className="label">EPDs (JSON)</span>
           <textarea className="input" rows={3} value={epdText} onChange={(e) => setEpdText(e.target.value)} />
         </label>
-        <button className="btn btn-primary" onClick={addLot} disabled={!lotAuction}>Add lot</button>
+        <button className="btn btn-primary" onClick={addLot} disabled={!lotAuction}>Add Lot</button>
       </div>
 
       <h2 style={{ fontSize: 22, margin: "8px 0 14px" }}>Auctions</h2>
@@ -259,7 +259,7 @@ export default function Sell() {
           <div className="head">
             <strong style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>{a.name}</strong>
             <span className={`pill ${a.status.toLowerCase()}`}>{a.status}</span>
-            {a.status !== "CLOSED" && <Link href={`/ring/${a.id}`} className="btn-link" style={{ marginLeft: "auto" }}>Open ring →</Link>}
+            {a.status !== "CLOSED" && <Link href={`/ring/${a.id}`} className="btn-link" style={{ marginLeft: "auto" }}>Open Ring →</Link>}
           </div>
           <ul className="lotlist">
             {a.lots.map((l) => (

@@ -10,7 +10,7 @@ export default async function SellerStory({ params }: { params: { id: string } }
     return (
       <main className="wrap section">
         <p className="muted">Seller not found.</p>
-        <Link href="/" className="btn-link">← Back to catalog</Link>
+        <Link href="/" className="btn-link">← Back to Catalog</Link>
       </main>
     );
   }
@@ -71,7 +71,7 @@ export default async function SellerStory({ params }: { params: { id: string } }
 
           {lots.length > 0 && (
             <>
-              <h2 className="block-title" style={{ marginTop: 36 }}>Current lots</h2>
+              <h2 className="block-title" style={{ marginTop: 36 }}>Current Lots</h2>
               <p className="block-note">Active sales from {name}.</p>
               <div className="grid">
                 {lots.map((lot) => (

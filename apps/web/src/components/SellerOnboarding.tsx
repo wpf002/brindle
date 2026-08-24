@@ -59,7 +59,7 @@ export function SellerOnboarding() {
     {
       key: "identity",
       done: account.identityVerified,
-      title: "Verify your identity",
+      title: "Verify Your Identity",
       body: account.identityVerified
         ? "Verified."
         : "Required before money moves. Takes a couple of minutes.",
@@ -72,7 +72,7 @@ export function SellerOnboarding() {
     {
       key: "stripe",
       done: account.stripeOnboarded,
-      title: "Connect payouts",
+      title: "Connect Payouts",
       body: account.stripeOnboarded
         ? "Stripe account connected — you can accept payment on genetics lots."
         : account.stripeConnected
@@ -80,7 +80,7 @@ export function SellerOnboarding() {
           : "Connect a Stripe account so buyers can pay you through Brindle.",
       action: account.stripeOnboarded ? null : (
         <button className="btn btn-ghost btn-sm" onClick={startStripe} disabled={busy === "stripe"}>
-          {busy === "stripe" ? "Opening…" : account.stripeConnected ? "Finish setup" : "Connect Stripe"}
+          {busy === "stripe" ? "Opening…" : account.stripeConnected ? "Finish Setup" : "Connect Stripe"}
         </button>
       ),
     },
@@ -91,7 +91,7 @@ export function SellerOnboarding() {
 
   return (
     <div className="card-form">
-      <h2>Before you can sell</h2>
+      <h2>Before You Can Sell</h2>
       <p className="block-note" style={{ marginTop: -10 }}>
         {remaining === 1 ? "One step left." : `${remaining} steps left.`}
       </p>

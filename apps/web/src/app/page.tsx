@@ -1,22 +1,26 @@
 import Link from "next/link";
 import { registryBadges } from "@brindle/genetics";
-import { getCatalog, getSellers, getNews, type CatalogLot, type SellerSummary, type NewsSummary } from "../lib/api";
+import {
+  getCatalog, getSellers, getNews, getMarketLatest,
+  type CatalogLot, type SellerSummary, type NewsSummary, type MarketRow,
+} from "../lib/api";
 import { formatCents, priceUnitLabel } from "../lib/format";
 
 export const dynamic = "force-dynamic";
 
 const FILTERS: { label: string; value: string }[] = [
-  { label: "All lots", value: "" },
+  { label: "All Lots", value: "" },
   { label: "Semen", value: "SEMEN" },
   { label: "Embryo", value: "EMBRYO" },
   { label: "Bulls", value: "BULLS" },
 ];
 
 export default async function Page({ searchParams }: { searchParams: { category?: string } }) {
-  const [{ lots }, { sellers }, { posts }] = await Promise.all([
+  const [{ lots }, { sellers }, { posts }, market] = await Promise.all([
     getCatalog(),
     getSellers(),
     getNews(undefined, 3),
+    getMarketLatest(),
   ]);
   const active = searchParams.category ?? "";
   const shown = active ? lots.filter((l) => l.category === active) : lots;
@@ -26,18 +30,21 @@ export default async function Page({ searchParams }: { searchParams: { category?
   return (
     <main>
       <section className="hero">
-        <div className="wrap">
-          <div className="eyebrow">Livestock genetics · timed &amp; live</div>
-          <h1>Bid on proven genetics, with the data to back it.</h1>
-          <p>
-            Breeders run their own sales. Verified EPDs, side-by-side comparison, and one
-            credit approval that works across every seller on Brindle.
-          </p>
-          <div className="hero-stats">
-            <div className="stat"><div className="n tabular">{lots.length}</div><div className="l">Lots open</div></div>
-            <div className="stat"><div className="n tabular">{sellerCount}</div><div className="l">Active sales</div></div>
-            <div className="stat"><div className="n">Cleared once</div><div className="l">Bid everywhere</div></div>
+        <div className="wrap hero-grid">
+          <div>
+            <div className="eyebrow">Livestock Genetics · Timed &amp; Live</div>
+            <h1>Bid on proven genetics, with the data to back it.</h1>
+            <p>
+              Breeders run their own sales. Verified EPDs, side-by-side comparison, and one
+              credit approval that works across every seller on Brindle.
+            </p>
+            <div className="hero-stats">
+              <div className="stat"><div className="n tabular">{lots.length}</div><div className="l">Lots Open</div></div>
+              <div className="stat"><div className="n tabular">{sellerCount}</div><div className="l">Active Sales</div></div>
+              <div className="stat"><div className="n">Cleared Once</div><div className="l">Bid Everywhere</div></div>
+            </div>
           </div>
+          <MarketSnapshot rows={market.rows} asOf={market.asOf} />
         </div>
       </section>
 
@@ -64,13 +71,13 @@ export default async function Page({ searchParams }: { searchParams: { category?
         {badges.length > 0 && (
           <div style={{ marginTop: 36 }}>
             <div className="k" style={{ fontSize: 12, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".05em", fontWeight: 600, marginBottom: 10 }}>
-              Registered with
+              Registered With
             </div>
             <div className="badge-wall">
               {badges.map((b) => (
                 <span key={b.code} className="badge"><span className="mark">{b.code}</span>{b.name}</span>
               ))}
-              <span className="badge verified">✓ Verified sellers</span>
+              <span className="badge verified">✓ Verified Sellers</span>
             </div>
           </div>
         )}
@@ -80,7 +87,7 @@ export default async function Page({ searchParams }: { searchParams: { category?
         <section className="wrap strip">
           <div className="strip-head">
             <h2>Sellers on Brindle</h2>
-            <Link href="/sell">List your program →</Link>
+            <Link href="/sell">List Your Program →</Link>
           </div>
           <div className="seller-grid">
             {sellers.map((s) => <SellerCard key={s.id} seller={s} />)}
@@ -91,8 +98,8 @@ export default async function Page({ searchParams }: { searchParams: { category?
       {posts.length > 0 && (
         <section className="wrap strip">
           <div className="strip-head">
-            <h2>From the market desk</h2>
-            <Link href="/news">All news →</Link>
+            <h2>From the Market Desk</h2>
+            <Link href="/news">All News →</Link>
           </div>
           <div className="news-grid">
             {posts.map((p) => <NewsCard key={p.slug} post={p} />)}
@@ -101,6 +108,50 @@ export default async function Page({ searchParams }: { searchParams: { category?
       )}
     </main>
   );
+}
+
+/**
+ * The hero's right-hand column: today's USDA-reported prices.
+ *
+ * It's there because a hero with one column of copy left the top-right of the
+ * page empty, and because price context is the first thing a buyer wants before
+ * bidding — not decoration. Renders nothing at all when no reports have been
+ * ingested, so a fresh install gets a clean single-column hero instead of an
+ * empty box.
+ */
+function MarketSnapshot({ rows, asOf }: { rows: MarketRow[]; asOf: string | null }) {
+  if (rows.length === 0 || !asOf) return null;
+
+  // Highest-value classes first, which is how /market/latest already orders them.
+  const top = rows.slice(0, 3);
+  const asOfLabel = new Date(`${asOf}T12:00:00Z`).toLocaleDateString(undefined, {
+    month: "short", day: "numeric",
+  });
+
+  return (
+    <aside className="market-card" aria-labelledby="market-snapshot-heading">
+      <div className="market-card-head">
+        <span id="market-snapshot-heading" className="k">Cattle Market</span>
+        <span className="asof">{asOfLabel}</span>
+      </div>
+      <ul className="market-card-list">
+        {top.map((r) => (
+          <li key={`${r.category}-${r.wtLowLbs}`}>
+            <span className="cls">{titleCaseClass(r.category)}</span>
+            <span className="val tabular">{formatCents(String(r.avgCentsPerCwt))}<span className="u">/cwt</span></span>
+          </li>
+        ))}
+      </ul>
+      <Link href="/market" className="market-card-link">All USDA Prices →</Link>
+    </aside>
+  );
+}
+
+/** AMS reports classes in caps ("STEER — DRESSED DELIVERED"); soften for display. */
+function titleCaseClass(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/(^|[\s—-])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 }
 
 function LotCard({ lot }: { lot: CatalogLot }) {

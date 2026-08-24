@@ -11,8 +11,8 @@ export default async function NewsIndex({ searchParams }: { searchParams: { cate
 
   return (
     <main className="wrap section">
-      <div className="eyebrow">Market desk</div>
-      <h1 style={{ fontSize: 34, margin: "10px 0 20px" }}>News &amp; market reports</h1>
+      <div className="eyebrow">Market Desk</div>
+      <h1 style={{ fontSize: 34, margin: "10px 0 20px" }}>News &amp; Market Reports</h1>
 
       <div className="filters" style={{ marginBottom: 26 }}>
         <Link href="/news" className={`filter ${active === "" ? "active" : ""}`}>All</Link>

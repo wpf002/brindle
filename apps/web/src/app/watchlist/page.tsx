@@ -54,10 +54,10 @@ export default function WatchlistPage() {
       <main className="wrap section">
         <div className="signin-wrap">
           <div className="eyebrow">Watchlist</div>
-          <h1>Keep an eye on lots</h1>
+          <h1>Keep an Eye on Lots</h1>
           <p className="muted">Sign in to save lots and get told when you&rsquo;re outbid.</p>
           <button className="btn btn-primary btn-lg" style={{ marginTop: 20, maxWidth: 220 }} onClick={openSignIn}>
-            Sign in
+            Sign In
           </button>
         </div>
       </main>
@@ -67,13 +67,13 @@ export default function WatchlistPage() {
   return (
     <main className="wrap section">
       <div className="eyebrow">Watchlist</div>
-      <h1 style={{ fontSize: 34, margin: "10px 0 20px" }}>Lots you&rsquo;re watching</h1>
+      <h1 style={{ fontSize: 34, margin: "10px 0 20px" }}>Lots You&rsquo;re Watching</h1>
 
       {lots.length === 0 ? (
         <div className="empty">
           Nothing saved yet. Tap the star on any lot to keep track of it.
           <div style={{ marginTop: 16 }}>
-            <Link href="/" className="btn btn-primary">Browse auctions</Link>
+            <Link href="/" className="btn btn-primary">Browse Auctions</Link>
           </div>
         </div>
       ) : (

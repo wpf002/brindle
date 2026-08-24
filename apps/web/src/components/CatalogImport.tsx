@@ -87,7 +87,7 @@ export function CatalogImport({ auctions, onImported }: {
 
   return (
     <div className="card-form">
-      <h2>Import a sale catalog</h2>
+      <h2>Import a Sale Catalog</h2>
       <p className="block-note" style={{ marginTop: -10 }}>
         Upload the CSV your sale-management software already exports. We&rsquo;ll match
         your column names automatically — no reformatting needed.
@@ -95,11 +95,11 @@ export function CatalogImport({ auctions, onImported }: {
 
       <div className="form-grid">
         <label className="field">
-          <span className="label">Catalog file (.csv)</span>
+          <span className="label">Catalog File (.csv)</span>
           <input ref={fileRef} className="input" type="file" accept=".csv,text/csv" onChange={onFile} />
         </label>
         <label className="field">
-          <span className="label">Add lots to</span>
+          <span className="label">Add Lots To</span>
           <select className="input" value={auctionId} onChange={(e) => setAuctionId(e.target.value)}>
             <option value="">Select a sale…</option>
             {auctions.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -108,7 +108,7 @@ export function CatalogImport({ auctions, onImported }: {
       </div>
 
       <label className="field" style={{ marginBottom: 14 }}>
-        <span className="label">…or paste the catalog directly</span>
+        <span className="label">…or Paste the Catalog Directly</span>
         <textarea className="input" rows={4} value={csv} placeholder="Lot #,Bull Name,Registration Number,Opening Bid,Doses,CED,BW"
           onChange={(e) => { setCsv(e.target.value); setPreview(null); }} />
       </label>
@@ -130,13 +130,13 @@ export function CatalogImport({ auctions, onImported }: {
       {preview && (
         <div style={{ marginTop: 18 }}>
           <dl className="import-grid">
-            <dt>Rows ready</dt><dd className="tabular">{preview.summary.parsed}</dd>
-            <dt>Rows skipped</dt><dd className="tabular">{preview.summary.failed}</dd>
-            <dt>Columns matched</dt>
+            <dt>Rows Ready</dt><dd className="tabular">{preview.summary.parsed}</dd>
+            <dt>Rows Skipped</dt><dd className="tabular">{preview.summary.failed}</dd>
+            <dt>Columns Matched</dt>
             <dd>{detected.length ? detected.map(([f, c]) => `${c} → ${f}`).join(", ") : "none"}</dd>
             {Object.keys(preview.epdColumns).length > 0 && (
               <>
-                <dt>EPD traits</dt>
+                <dt>EPD Traits</dt>
                 <dd>{Object.keys(preview.epdColumns).join(", ")}</dd>
               </>
             )}

@@ -19,13 +19,13 @@ const DESCRIPTION =
 export const metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Brindle — livestock genetics auctions",
+    default: "Brindle — Livestock Genetics Auctions",
     template: "%s | Brindle",
   },
   description: DESCRIPTION,
   openGraph: {
     siteName: "Brindle",
-    title: "Brindle — livestock genetics auctions",
+    title: "Brindle — Livestock Genetics Auctions",
     description: DESCRIPTION,
     type: "website",
   },

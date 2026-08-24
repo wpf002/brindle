@@ -44,19 +44,19 @@ export function Nav() {
                 <span className="chip">
                   {session.buyerNumber
                     ? <span className="num">{session.buyerNumber}</span>
-                    : <span className="num">Credit pending</span>}
+                    : <span className="num">Credit Pending</span>}
                   {session.creditApproved && (
                     <span className="pill live" style={{ padding: "1px 7px" }}>Approved</span>
                   )}
                 </span>
                 <Link href="/account" className="nav-link">Account</Link>
-                <button className="btn-link" onClick={() => void signOut()}>Sign out</button>
+                <button className="btn-link" onClick={() => void signOut()}>Sign Out</button>
               </>
             ) : (
               <>
-                <button className="btn-link" onClick={() => setModal("signin")}>Sign in</button>
+                <button className="btn-link" onClick={() => setModal("signin")}>Sign In</button>
                 <button className="btn btn-primary btn-sm" onClick={() => setModal("register")}>
-                  Create account
+                  Create Account
                 </button>
               </>
             )}
@@ -124,7 +124,7 @@ function AuthModal({
       >
         <div>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22 }}>
-            {mode === "signin" ? "Sign in to Brindle" : "Create your Brindle account"}
+            {mode === "signin" ? "Sign In to Brindle" : "Create Your Brindle Account"}
           </h2>
           <p className="muted" style={{ fontSize: 13.5, margin: "4px 0 0" }}>
             {mode === "signin"
@@ -136,7 +136,7 @@ function AuthModal({
         {mode === "register" && (
           <>
             <label className="field">
-              <span className="label">Name or ranch name</span>
+              <span className="label">Name or Ranch Name</span>
               <input className="input" value={legalName} onChange={(e) => setLegalName(e.target.value)}
                 placeholder="Willow Creek Genetics" autoFocus />
             </label>
@@ -165,7 +165,7 @@ function AuthModal({
 
         {mode === "signin" && needsTotp && (
           <label className="field">
-            <span className="label">Authenticator code</span>
+            <span className="label">Authenticator Code</span>
             <input className="input" value={totp} inputMode="numeric" autoComplete="one-time-code"
               maxLength={20} autoFocus placeholder="123456"
               onChange={(e) => setTotp(e.target.value)}
@@ -179,13 +179,13 @@ function AuthModal({
         {error && <div className="statusmsg rejected">{error}</div>}
 
         <button className="btn btn-primary btn-lg" onClick={submit} disabled={busy || !canSubmit}>
-          {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
+          {busy ? "Working…" : mode === "signin" ? "Sign In" : "Create Account"}
         </button>
 
         {mode === "signin" && (
           <p className="muted" style={{ fontSize: 13, textAlign: "center", margin: 0 }}>
             <Link href="/forgot-password" className="btn-link" style={{ fontSize: "inherit" }}
-              onClick={onClose}>Forgot your password?</Link>
+              onClick={onClose}>Forgot Your Password?</Link>
           </p>
         )}
 
@@ -199,9 +199,9 @@ function AuthModal({
 
         <p className="muted" style={{ fontSize: 13, textAlign: "center", margin: 0 }}>
           {mode === "signin" ? (
-            <>New to Brindle? <button className="btn-link" onClick={() => onMode("register")}>Create an account</button></>
+            <>New to Brindle? <button className="btn-link" onClick={() => onMode("register")}>Create an Account</button></>
           ) : (
-            <>Already have an account? <button className="btn-link" onClick={() => onMode("signin")}>Sign in</button></>
+            <>Already have an account? <button className="btn-link" onClick={() => onMode("signin")}>Sign In</button></>
           )}
         </p>
       </div>

@@ -5,34 +5,35 @@ export function Footer() {
         <div>
           <div className="footer-brand">Brindle<span className="dot">.</span></div>
           <p className="footer-tag">
-            Integer-cent bidding engine · marketplace facilitator · genetics-first.
-            One credit approval, every seller&rsquo;s sale.
+            An auction marketplace for cattle genetics. Breeders run their own sales,
+            buyers clear credit once and bid anywhere on Brindle, and every bid is
+            recorded in an audit trail neither side can change.
           </p>
         </div>
         <div className="footer-cols">
           <div className="footer-col">
             <div className="h">Marketplace</div>
-            <a href="/">Browse auctions</a>
-            <a href="/market">Market prices</a>
+            <a href="/">Browse Auctions</a>
+            <a href="/market">Market Prices</a>
             <a href="/sell">Sell on Brindle</a>
           </div>
           <div className="footer-col">
             <div className="h">Trust</div>
-            <div>Buyer credit cleared once</div>
-            <div>Verified sellers</div>
-            <div>Immutable bid log</div>
+            <div>Buyer Credit Cleared Once</div>
+            <div>Verified Sellers</div>
+            <div>Immutable Bid Log</div>
           </div>
           <div className="footer-col">
             <div className="h">Legal</div>
-            <a href="/terms">Terms of service</a>
-            <a href="/privacy">Privacy policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/privacy">Privacy Policy</a>
             <a href="mailto:hello@brindle.example">Contact</a>
           </div>
         </div>
       </div>
       <div className="wrap footer-bottom">
-        Brindle Marketplace, Inc. · genetics-first livestock auctions ·{" "}
-        Market data courtesy of USDA Agricultural Marketing Service
+        Brindle Marketplace, Inc. · Market data courtesy of the{" "}
+        USDA Agricultural Marketing Service
       </div>
     </footer>
   );

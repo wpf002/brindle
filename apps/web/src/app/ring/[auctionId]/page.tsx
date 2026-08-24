@@ -83,7 +83,7 @@ export default function LiveRing({ params }: { params: { auctionId: string } }) 
 
         <div className="ring-panel">
           <div className="ring-standing">
-            <div className="k">Standing bid</div>
+            <div className="k">Standing Bid</div>
             <div className="big tabular">{standing ? centsToDollars(standing) : "—"}</div>
             <div style={{ fontSize: 12.5, color: "#c9a99d", marginTop: 6 }}>
               <span className={connected ? "dotlive" : "dotoff"} style={{ display: "inline-block", marginRight: 6 }} />
@@ -91,19 +91,19 @@ export default function LiveRing({ params }: { params: { auctionId: string } }) 
             </div>
           </div>
           <div className="ring-ask">
-            <div className="k">Auctioneer asks</div>
+            <div className="k">Auctioneer Asks</div>
             <div className="big tabular">{ask ? centsToDollars(ask) : "—"}</div>
           </div>
 
           <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 10 }}>
             {!signedIn ? (
-              <button className="btn btn-primary btn-lg" onClick={openSignIn}>Sign in to join</button>
+              <button className="btn btn-primary btn-lg" onClick={openSignIn}>Sign In to Join</button>
             ) : isAuctioneer ? (
               <>
-                <div className="field"><span className="label" style={{ color: "#c9a99d" }}>Set ask $</span>
+                <div className="field"><span className="label" style={{ color: "#c9a99d" }}>Set Ask $</span>
                   <input className="input" style={{ background: "#321412", borderColor: "#5c2d29", color: "#f1e6de" }}
                     value={newAsk} onChange={(e) => setNewAsk(e.target.value)} placeholder="1200.00" /></div>
-                <button className="btn btn-forest btn-lg" onClick={() => { send({ type: "SET_ASK", askCents: dollarsToCents(newAsk) }); setNewAsk(""); }} disabled={!newAsk || !lotId}>Set ask</button>
+                <button className="btn btn-forest btn-lg" onClick={() => { send({ type: "SET_ASK", askCents: dollarsToCents(newAsk) }); setNewAsk(""); }} disabled={!newAsk || !lotId}>Set Ask</button>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => send({ type: "HAMMER" })} disabled={!lotId}>Hammer</button>
                   <button className="btn btn-ghost" onClick={() => send({ type: "PASS" })} disabled={!lotId}>Pass</button>
@@ -113,7 +113,7 @@ export default function LiveRing({ params }: { params: { auctionId: string } }) 
             ) : (
               <button className="btn btn-forest btn-lg" onClick={() => send({ type: "TAKE_ASK", kind: "ONLINE" })}
                 disabled={!ask || status !== "OPEN" || !lotId}>
-                Take the ask{ask ? ` — ${centsToDollars(ask)}` : ""}
+                Take the Ask{ask ? ` — ${centsToDollars(ask)}` : ""}
               </button>
             )}
           </div>

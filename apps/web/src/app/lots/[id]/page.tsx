@@ -53,7 +53,7 @@ export default async function LotPage({ params }: { params: { id: string } }) {
     return (
       <main className="wrap section">
         <p className="muted">Lot not found.</p>
-        <Link href="/" className="btn-link">← Back to catalog</Link>
+        <Link href="/" className="btn-link">← Back to Catalog</Link>
       </main>
     );
   }

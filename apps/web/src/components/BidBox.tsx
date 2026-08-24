@@ -90,10 +90,10 @@ export function BidBox({ auctionId, lotId, initialPriceCents, incrementCents, un
       </div>
       <div className="panel-body">
         {!signedIn ? (
-          <button className="btn btn-primary btn-lg" onClick={openSignIn}>Sign in to bid</button>
+          <button className="btn btn-primary btn-lg" onClick={openSignIn}>Sign In to Bid</button>
         ) : !creditApproved ? (
           <>
-            <button className="btn btn-primary btn-lg" disabled>Bidding locked</button>
+            <button className="btn btn-primary btn-lg" disabled>Bidding Locked</button>
             <div className="watchline">
               <span>
                 Your buyer credit is still pending. We&rsquo;ll email you the moment

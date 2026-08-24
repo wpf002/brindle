@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of service",
+  title: "Terms of Service",
   description: "Brindle's terms of service, auction terms, and dispute resolution policy.",
 };
 
@@ -16,14 +16,14 @@ export default function TermsPage() {
       <div className="news-detail">
         <Link href="/" className="crumb">← Home</Link>
         <div className="eyebrow cat">Legal</div>
-        <h1>Terms of service</h1>
+        <h1>Terms of Service</h1>
         <p className="dek">
           The agreement between Brindle, sellers who run sales here, and buyers who bid on them.
         </p>
         <div className="byline">Draft — pending legal review. Last updated {new Date().getFullYear()}.</div>
 
         <div className="news-body">
-          <h2 className="block-title">1. What Brindle is</h2>
+          <h2 className="block-title">1. What Brindle Is</h2>
           <p>
             Brindle is a technology platform that lets livestock and genetics sellers run their own
             auctions. Brindle is not a livestock dealer, does not take ownership of any animal or
@@ -37,7 +37,7 @@ export default function TermsPage() {
             proceeds in its own accounts.
           </p>
 
-          <h2 className="block-title">2. Accounts and buyer credit</h2>
+          <h2 className="block-title">2. Accounts and Buyer Credit</h2>
           <p>
             You must create an account with accurate information to use Brindle. Buyers must
             complete identity verification and be approved for buyer credit before bidding.
@@ -63,7 +63,7 @@ export default function TermsPage() {
             more than one account to bid on the same lot.
           </p>
 
-          <h2 className="block-title">4. Seller obligations</h2>
+          <h2 className="block-title">4. Seller Obligations</h2>
           <p>
             Sellers are responsible for the accuracy of every listing: descriptions, weights,
             registration numbers, EPD figures, health and disease-test records, and photographs.
@@ -75,7 +75,7 @@ export default function TermsPage() {
             required, and any state licensing that applies to their operation.
           </p>
 
-          <h2 className="block-title">5. Payment and settlement</h2>
+          <h2 className="block-title">5. Payment and Settlement</h2>
           <p>
             For lots settled through integrated payment, the buyer&rsquo;s payment method is
             authorized when the lot closes and captured when the seller confirms the sale. Funds
@@ -111,7 +111,7 @@ export default function TermsPage() {
             before you bid and is added to the hammer price.
           </p>
 
-          <h2 className="block-title">8. Limitation of liability</h2>
+          <h2 className="block-title">8. Limitation of Liability</h2>
           <p>
             Brindle provides the platform as-is. Brindle is not a party to the sale contract and
             does not warrant any animal, genetic material, or seller representation. To the extent

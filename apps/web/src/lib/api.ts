@@ -67,6 +67,28 @@ export async function compareLots(lotIds: string[]): Promise<unknown> {
   return r.json();
 }
 
+// ---------- market data (USDA AMS) ----------
+export interface MarketRow {
+  reportDate: string;
+  region: string;
+  category: string;
+  wtLowLbs: number;
+  wtHighLbs: number;
+  avgCentsPerCwt: number;
+  headCount: number;
+  source: string;
+}
+
+export async function getMarketLatest(): Promise<{ rows: MarketRow[]; asOf: string | null }> {
+  try {
+    const r = await fetch(`${API}/market/latest`, { cache: "no-store" });
+    if (!r.ok) return { rows: [], asOf: null };
+    return r.json();
+  } catch {
+    return { rows: [], asOf: null };
+  }
+}
+
 // ---------- seller directory + story pages ----------
 export interface SellerSummary {
   id: string;

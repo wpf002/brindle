@@ -4,7 +4,7 @@ import { formatCents } from "../../lib/format";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Cattle market prices",
+  title: "Cattle Market Prices",
   description: "Live USDA-reported cattle prices, updated from AMS Livestock Mandatory Price Reporting.",
 };
 
@@ -34,8 +34,8 @@ export default async function MarketPage() {
 
   return (
     <main className="wrap section">
-      <div className="eyebrow">Market data</div>
-      <h1 style={{ fontSize: 34, margin: "10px 0 8px" }}>Cattle prices</h1>
+      <div className="eyebrow">Market Data</div>
+      <h1 style={{ fontSize: 34, margin: "10px 0 8px" }}>Cattle Prices</h1>
       <p className="muted" style={{ maxWidth: "60ch", marginBottom: 26 }}>
         Negotiated slaughter cattle prices as reported to USDA under Livestock Mandatory
         Price Reporting. These are packer-reported fed cattle trades — useful market
@@ -53,9 +53,9 @@ export default async function MarketPage() {
             <thead>
               <tr>
                 <th>Class</th>
-                <th>Weight range</th>
+                <th>Weight Range</th>
                 <th className="num">Head</th>
-                <th className="num">Weighted avg</th>
+                <th className="num">Weighted Avg</th>
               </tr>
             </thead>
             <tbody>

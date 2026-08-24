@@ -15,6 +15,25 @@ interface Notification {
 
 const POLL_MS = 30_000;
 
+/**
+ * Bell glyph. Drawn rather than an emoji: the emoji rendered as a full-colour
+ * OS-specific character that ignored the nav's colour and looked different on
+ * every platform. This inherits `currentColor` and sits on the same optical
+ * baseline as the nav text.
+ */
+function BellIcon() {
+  return (
+    <svg
+      width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true" focusable="false"
+    >
+      <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5" />
+      <path d="M13.7 18.5a2 2 0 0 1-3.4 0" />
+    </svg>
+  );
+}
+
 export function NotificationBell() {
   const [items, setItems] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -62,7 +81,7 @@ export function NotificationBell() {
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
         onClick={() => setOpen((v) => !v)}
       >
-        <span aria-hidden="true">🔔</span>
+        <BellIcon />
         {unread > 0 && <span className="bell-dot">{unread > 9 ? "9+" : unread}</span>}
       </button>
 

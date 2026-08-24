@@ -10,14 +10,14 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   return (
     <main className="wrap section">
       <div className="signin-wrap">
-        <div className="eyebrow">Something went wrong</div>
-        <h1>We hit a snag loading this page</h1>
+        <div className="eyebrow">Error</div>
+        <h1>Something Went Wrong</h1>
         <p className="muted">
           The problem has been logged. Try again, and if it keeps happening let us know.
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>
-          <button className="btn btn-primary" onClick={reset}>Try again</button>
-          <a className="btn btn-ghost" href="/">Back to auctions</a>
+          <button className="btn btn-primary" onClick={reset}>Try Again</button>
+          <a className="btn btn-ghost" href="/">Back to Auctions</a>
         </div>
       </div>
     </main>

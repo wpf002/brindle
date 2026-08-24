@@ -34,10 +34,10 @@ export default function AccountPage() {
   if (!me) {
     return (
       <div className="signin-wrap">
-        <h1>Your account</h1>
+        <h1>Your Account</h1>
         <div className="signin-card">
           <p className="muted" style={{ margin: 0 }}>Sign in to manage your account.</p>
-          <button className="btn btn-primary btn-lg" onClick={openSignIn}>Sign in</button>
+          <button className="btn btn-primary btn-lg" onClick={openSignIn}>Sign In</button>
         </div>
       </div>
     );
@@ -97,7 +97,7 @@ function EmailPanel({ verified }: { verified: boolean }) {
 
   return (
     <Panel
-      title="Email address"
+      title="Email Address"
       note={verified
         ? "Confirmed. This is where sale notices and settlement paperwork go."
         : "Not confirmed yet. Confirm it so you don't miss outbid notices or settlement paperwork."}
@@ -108,7 +108,7 @@ function EmailPanel({ verified }: { verified: boolean }) {
         <>
           <button className="btn btn-primary btn-sm" style={{ alignSelf: "start" }}
             onClick={resend} disabled={busy}>
-            {busy ? "Sending…" : "Resend confirmation email"}
+            {busy ? "Sending…" : "Resend Confirmation Email"}
           </button>
           {msg && <div className="statusmsg info">{msg}</div>}
         </>
@@ -157,7 +157,7 @@ function TwoFactorPanel({ enabled, onChange }: { enabled: boolean; onChange: () 
   // The recovery code is shown exactly once — the server only keeps its hash.
   if (recovery) {
     return (
-      <Panel title="Two-factor authentication"
+      <Panel title="Two-Factor Authentication"
         note="Two-factor is on. Write this recovery code down now — it won't be shown again.">
         <code style={{ fontSize: 20, letterSpacing: ".12em", padding: "12px 14px",
           background: "var(--forest-wash)", borderRadius: 10, textAlign: "center" }}>
@@ -168,28 +168,28 @@ function TwoFactorPanel({ enabled, onChange }: { enabled: boolean; onChange: () 
           you can set it up again on a new device.
         </p>
         <button className="btn btn-ghost btn-sm" style={{ alignSelf: "start" }}
-          onClick={() => setRecovery("")}>I&rsquo;ve saved it</button>
+          onClick={() => setRecovery("")}>I&rsquo;ve Saved It</button>
       </Panel>
     );
   }
 
   if (enabled) {
     return (
-      <Panel title="Two-factor authentication"
+      <Panel title="Two-Factor Authentication"
         note="On. Sign-ins need a code from your authenticator app.">
         <span className="pill live" style={{ alignSelf: "start" }}>Enabled</span>
         <details>
-          <summary className="btn-link" style={{ cursor: "pointer" }}>Turn two-factor off</summary>
+          <summary className="btn-link" style={{ cursor: "pointer" }}>Turn Two-Factor Off</summary>
           <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
             <label className="field">
-              <span className="label">Confirm your password</span>
+              <span className="label">Confirm Your Password</span>
               <input className="input" type="password" value={password}
                 onChange={(e) => setPassword(e.target.value)} />
             </label>
             {error && <div className="statusmsg rejected">{error}</div>}
             <button className="btn btn-ghost btn-sm" style={{ justifySelf: "start" }}
               onClick={disable} disabled={busy || !password}>
-              {busy ? "Working…" : "Turn it off"}
+              {busy ? "Working…" : "Turn It Off"}
             </button>
           </div>
         </details>
@@ -198,14 +198,14 @@ function TwoFactorPanel({ enabled, onChange }: { enabled: boolean; onChange: () 
   }
 
   return (
-    <Panel title="Two-factor authentication"
+    <Panel title="Two-Factor Authentication"
       note="A second factor on top of your password. Worth turning on for any account that can bid or take payouts.">
       {!setup ? (
         <>
           {error && <div className="statusmsg rejected">{error}</div>}
           <button className="btn btn-primary btn-sm" style={{ alignSelf: "start" }}
             onClick={start} disabled={busy}>
-            {busy ? "Working…" : "Set up two-factor"}
+            {busy ? "Working…" : "Set Up Two-Factor"}
           </button>
         </>
       ) : (
@@ -221,7 +221,7 @@ function TwoFactorPanel({ enabled, onChange }: { enabled: boolean; onChange: () 
             Or open it directly in your authenticator app
           </a>
           <label className="field">
-            <span className="label">Code from your app</span>
+            <span className="label">Code From Your App</span>
             <input className="input" value={code} inputMode="numeric" autoComplete="one-time-code"
               placeholder="123456" maxLength={6}
               onChange={(e) => setCode(e.target.value)}
@@ -231,7 +231,7 @@ function TwoFactorPanel({ enabled, onChange }: { enabled: boolean; onChange: () 
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn btn-primary btn-sm" onClick={confirm}
               disabled={busy || code.trim().length !== 6}>
-              {busy ? "Checking…" : "Turn on two-factor"}
+              {busy ? "Checking…" : "Turn On Two-Factor"}
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setSetup(null); setCode(""); setError(""); }}>
               Cancel
@@ -266,18 +266,18 @@ function PasswordPanel() {
   return (
     <Panel title="Password" note="Changing it signs out every other device.">
       <label className="field">
-        <span className="label">Current password</span>
+        <span className="label">Current Password</span>
         <input className="input" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} />
       </label>
       <label className="field">
-        <span className="label">New password</span>
+        <span className="label">New Password</span>
         <input className="input" type="password" value={next} placeholder="At least 8 characters"
           onChange={(e) => setNext(e.target.value)} />
       </label>
       {msg && <div className={`statusmsg ${msg.kind}`}>{msg.text}</div>}
       <button className="btn btn-primary btn-sm" style={{ alignSelf: "start" }}
         onClick={submit} disabled={busy || !current || next.length < 8}>
-        {busy ? "Saving…" : "Change password"}
+        {busy ? "Saving…" : "Change Password"}
       </button>
     </Panel>
   );
@@ -304,14 +304,14 @@ function SessionsPanel() {
   }
 
   return (
-    <Panel title="Where you're signed in"
+    <Panel title="Where You're Signed In"
       note="Every device with an active session. If you see one you don't recognise, sign out everywhere and change your password.">
       <ul className="lotlist">
         {sessions.map((s) => (
           <li key={s.id} style={{ display: "grid", gap: 2 }}>
             <span>
               {describeAgent(s.userAgent)}
-              {s.current && <span className="pill live" style={{ marginLeft: 8, padding: "1px 7px" }}>This device</span>}
+              {s.current && <span className="pill live" style={{ marginLeft: 8, padding: "1px 7px" }}>This Device</span>}
             </span>
             <span className="dim" style={{ fontSize: 12 }}>
               {s.ip ?? "unknown address"} · last active {new Date(s.lastSeenAt).toLocaleString()}
@@ -322,9 +322,9 @@ function SessionsPanel() {
       </ul>
       <button className="btn btn-ghost btn-sm" style={{ alignSelf: "start" }}
         onClick={signOutEverywhere} disabled={busy}>
-        {busy ? "Signing out…" : "Sign out everywhere"}
+        {busy ? "Signing out…" : "Sign Out Everywhere"}
       </button>
-      <Link href="/watchlist" className="btn-link" style={{ fontSize: 13 }}>Back to your watchlist</Link>
+      <Link href="/watchlist" className="btn-link" style={{ fontSize: 13 }}>Back to Your Watchlist</Link>
     </Panel>
   );
 }

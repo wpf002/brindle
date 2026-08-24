@@ -37,7 +37,7 @@ function VerifyEmail() {
 
   return (
     <div className="signin-wrap">
-      <h1>{state === "done" ? "Email confirmed" : "Confirming your email"}</h1>
+      <h1>{state === "done" ? "Email Confirmed" : "Confirming Your Email"}</h1>
       <div className="signin-card">
         {state === "working" && <p className="muted" style={{ margin: 0 }}>One moment…</p>}
 
@@ -48,7 +48,7 @@ function VerifyEmail() {
               credit can bid in any sale on Brindle.
             </p>
             <Link href="/" className="btn btn-primary btn-lg" style={{ textAlign: "center" }}>
-              Browse the sales
+              Browse the Sales
             </Link>
           </>
         )}
@@ -61,7 +61,7 @@ function VerifyEmail() {
               one from your account page.
             </p>
             <Link href="/account" className="btn btn-primary btn-lg" style={{ textAlign: "center" }}>
-              Go to my account
+              Go to My Account
             </Link>
           </>
         )}
@@ -73,7 +73,7 @@ function VerifyEmail() {
 export default function Page() {
   // useSearchParams needs a Suspense boundary under the App Router.
   return (
-    <Suspense fallback={<div className="signin-wrap"><h1>Confirming your email</h1></div>}>
+    <Suspense fallback={<div className="signin-wrap"><h1>Confirming Your Email</h1></div>}>
       <VerifyEmail />
     </Suspense>
   );
