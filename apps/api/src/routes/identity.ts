@@ -3,12 +3,13 @@ import crypto from "node:crypto";
 import { prisma } from "@brindle/db";
 import { requireAuth } from "../auth.js";
 import { makeIdentityProvider } from "../identity.js";
-import { isLocalDev } from "../env.js";
+import { isLocalDev, identityVerificationEnabled } from "../env.js";
 
 export async function identityRoutes(app: FastifyInstance) {
   const provider = makeIdentityProvider();
 
-  app.post("/identity/start", { preHandler: requireAuth }, async (req) => {
+  app.post("/identity/start", { preHandler: requireAuth }, async (req, reply) => {
+    if (!provider) return reply.code(503).send({ error: "IDENTITY_VERIFICATION_DISABLED" });
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.session!.userId } });
     const { inquiryUrl, ref } = await provider.startInquiry(user.id, user.email);
     await prisma.user.update({ where: { id: user.id }, data: { identityRef: ref } });
@@ -20,7 +21,7 @@ export async function identityRoutes(app: FastifyInstance) {
   // not hand out verified badges. There, verification only ever completes via
   // the signed webhook below.
   app.post<{ Querystring: { ref?: string } }>("/identity/dev-approve", { preHandler: requireAuth }, async (req, reply) => {
-    if (!isLocalDev()) return reply.code(404).send({ error: "NOT_FOUND" });
+    if (!isLocalDev() || !identityVerificationEnabled()) return reply.code(404).send({ error: "NOT_FOUND" });
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.session!.userId } });
     if (!req.query.ref || user.identityRef !== req.query.ref) {
       return reply.code(400).send({ error: "REF_MISMATCH" });

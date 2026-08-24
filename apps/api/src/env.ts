@@ -46,6 +46,38 @@ export function paymentsEnabled(): boolean {
   return (process.env.PAYMENTS_ENABLED ?? "true").toLowerCase() !== "false";
 }
 
+/**
+ * Whether this deployment verifies government ID at all.
+ *
+ * Every provider worth using here is paid, and identity verification only earns
+ * its cost once strangers are moving real money between themselves. A
+ * marketplace that isn't settling payments yet doesn't need it, and paying for
+ * it to sit idle is worse than not having it.
+ *
+ * Off means the badge is never offered — not that it's granted for free. The
+ * dev stub self-approves everyone, which is fine on a laptop and dishonest
+ * anywhere else; that distinction is the whole point of this flag existing
+ * separately from a missing key.
+ */
+export function identityVerificationEnabled(): boolean {
+  return (process.env.IDENTITY_VERIFICATION_ENABLED ?? "true").toLowerCase() !== "false";
+}
+
+/**
+ * Whether this deployment can send email.
+ *
+ * In-app notifications are unaffected — they're database rows and always get
+ * written. What's lost is anything that has to reach someone who isn't looking
+ * at the site: email confirmation, and password reset, which becomes
+ * unrecoverable rather than merely inconvenient. Those endpoints say so plainly
+ * instead of returning a cheerful "sent" for mail that goes nowhere.
+ *
+ * Fine for a deployment with no real users on it. Turn it on before there are.
+ */
+export function emailEnabled(): boolean {
+  return (process.env.EMAIL_ENABLED ?? "true").toLowerCase() !== "false";
+}
+
 // Recorded so boot can log exactly which stubs are live, and /ready can report
 // them — an operator should never have to guess whether identity checks on this
 // box are real.

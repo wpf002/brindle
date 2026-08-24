@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@brindle/db";
-import { deployEnv, activeDevFallbacks } from "../env.js";
+import {
+  deployEnv, activeDevFallbacks, paymentsEnabled, identityVerificationEnabled, emailEnabled,
+} from "../env.js";
 
 export async function health(app: FastifyInstance) {
   // Liveness: is the process up? Deliberately dependency-free so a database
@@ -36,6 +38,13 @@ export async function health(app: FastifyInstance) {
       checks,
       env: deployEnv(),
       devFallbacks: activeDevFallbacks(),
+      // Features switched off for this deployment. Distinct from devFallbacks:
+      // these are absent on purpose, not stubbed.
+      disabled: [
+        ...(paymentsEnabled() ? [] : ["payments"]),
+        ...(identityVerificationEnabled() ? [] : ["identity"]),
+        ...(emailEnabled() ? [] : ["email"]),
+      ],
     });
   });
 }

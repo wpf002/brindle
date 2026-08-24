@@ -10,6 +10,7 @@ import { generateTotpSecret, verifyTotp, totpUri, generateRecoveryCode } from ".
 import { nextBuyerNumber } from "../buyers.js";
 import { notify } from "../notify.js";
 import { audit } from "../audit.js";
+import { emailEnabled } from "../env.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -238,6 +239,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   // ── email verification ───────────────────────────────────────
   app.post("/auth/resend-verification", { preHandler: requireAuth }, async (req, reply) => {
+    if (!emailEnabled()) return reply.code(503).send({ error: "EMAIL_DISABLED" });
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.session!.userId } });
     if (user.emailVerifiedAt) return reply.code(409).send({ error: "ALREADY_VERIFIED" });
     await sendVerificationEmail(user.id, user.email);
@@ -254,7 +256,12 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   // ── password reset ───────────────────────────────────────────
-  app.post<{ Body: { email?: string } }>("/auth/forgot-password", tightLimit, async (req) => {
+  app.post<{ Body: { email?: string } }>("/auth/forgot-password", tightLimit, async (req, reply) => {
+    // Saying "sent" for mail that goes nowhere would strand someone waiting on
+    // an email that is never coming. This leaks nothing about who has an
+    // account — it's a property of the deployment, not the address.
+    if (!emailEnabled()) return reply.code(503).send({ error: "EMAIL_DISABLED" });
+
     const email = req.body?.email?.trim().toLowerCase();
     if (email) {
       const user = await prisma.user.findUnique({ where: { email } });

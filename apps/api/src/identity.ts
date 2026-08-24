@@ -1,4 +1,4 @@
-import { useDevFallback } from "./env.js";
+import { useDevFallback, identityVerificationEnabled } from "./env.js";
 
 // Identity verification port. Same adapter shape as the payment gateway: a real
 // implementation (Persona) and a dev fallback, chosen by whether a key is
@@ -52,12 +52,18 @@ export class PersonaIdentityProvider implements IdentityProvider {
   }
 }
 
-export function makeIdentityProvider(): IdentityProvider {
+/** Null when this deployment doesn't verify identity at all. */
+export function makeIdentityProvider(): IdentityProvider | null {
+  // Deliberately off. Not a missing key, so nothing to warn about — and
+  // crucially not the self-approving stub either.
+  if (!identityVerificationEnabled()) return null;
+
   const apiKey = process.env.PERSONA_API_KEY;
   const templateId = process.env.PERSONA_TEMPLATE_ID;
   if (!apiKey || !templateId) {
     // Throws on anything that isn't a local dev box. A staging deployment that
-    // silently self-approves identity is worse than one that won't start.
+    // silently self-approves identity is worse than one that won't start. Set
+    // IDENTITY_VERIFICATION_ENABLED=false to run without it on purpose.
     useDevFallback("identity", ["PERSONA_API_KEY", "PERSONA_TEMPLATE_ID"]);
     return new DevIdentityProvider();
   }
