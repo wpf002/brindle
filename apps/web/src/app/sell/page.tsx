@@ -106,6 +106,9 @@ export default function Sell() {
       await authed("/console/auctions", { method: "POST", body: JSON.stringify({
         name: aName, startsAt: aStart ? new Date(aStart).toISOString() : new Date().toISOString(),
         buyerPremiumBps: Math.round(Number(premium) * 100),
+        commissionCentsPerHead: commission ? Number(dollarsToCents(commission)) : undefined,
+        yardageCentsPerHead: yardage ? Number(dollarsToCents(yardage)) : undefined,
+        brandInspectionCentsPerHead: brandFee ? Number(dollarsToCents(brandFee)) : undefined,
       }) });
       setAName(""); setMsg("Auction created"); await refresh();
     } catch (e) { setMsg(humanizeError(e)); }
@@ -113,21 +116,55 @@ export default function Sell() {
 
   const [lotAuction, setLotAuction] = useState("");
   const [lotNo, setLotNo] = useState("1");
+  const [lotCategory, setLotCategory] = useState("STEERS");
+  const [headCount, setHeadCount] = useState("");
+  const [avgWeight, setAvgWeight] = useState("");
+  const [shrink, setShrink] = useState("3");
+  const [breed, setBreed] = useState("");
+  const [originState, setOriginState] = useState("");
+  const [certs, setCerts] = useState("");
+  const [commission, setCommission] = useState("15.00");
+  const [yardage, setYardage] = useState("1.50");
+  const [brandFee, setBrandFee] = useState("");
   const [bull, setBull] = useState("");
   const [doses, setDoses] = useState("");
   const [start, setStart] = useState("");
   const [photoCredit, setPhotoCredit] = useState("");
   const [photoKeys, setPhotoKeys] = useState<string[]>([]);
   const [epdText, setEpdText] = useState('{ "CED": 8, "BW": {"value": 1.2, "pct": 15}, "WW": 70, "Marb": {"value": 0.8, "pct": 4} }');
+  /**
+   * The unit a class actually trades in. Feeder and slaughter cattle are quoted
+   * per hundredweight against their weight; breeding stock and pairs sell by
+   * the head; genetics by the dose or embryo.
+   */
+  function priceUnitFor(category: string): string {
+    if (category === "SEMEN") return "DOSE";
+    if (category === "EMBRYO") return "EMBRYO";
+    if (["BULLS", "PAIRS", "BRED_HEIFERS"].includes(category)) return "HEAD";
+    return "CWT";
+  }
+
+  const isGenetics = lotCategory === "SEMEN" || lotCategory === "EMBRYO";
+
   async function addLot() {
     let epd: unknown;
     try { epd = epdText.trim() ? JSON.parse(epdText) : undefined; } catch { setMsg("Couldn't read those EPD values — check the format and try again."); return; }
     try {
       const res = await authed<{ epdWarnings: string[] }>(`/console/auctions/${lotAuction}/lots`, {
         method: "POST", body: JSON.stringify({
-          lotNumber: Number(lotNo), category: "SEMEN", priceUnit: "DOSE",
-          startingBidCents: dollarsToCents(start), bullName: bull || undefined,
-          dosesAvailable: doses ? Number(doses) : undefined, photoCredit: photoCredit || undefined,
+          lotNumber: Number(lotNo),
+          category: lotCategory,
+          priceUnit: priceUnitFor(lotCategory),
+          startingBidCents: dollarsToCents(start),
+          headCount: headCount ? Number(headCount) : undefined,
+          avgWeightLbs: avgWeight ? Number(avgWeight) : undefined,
+          shrinkPct: shrink ? Number(shrink) : undefined,
+          primaryBreed: breed || undefined,
+          originState: originState || undefined,
+          programCerts: certs ? certs.split(",").map((c) => c.trim()).filter(Boolean) : undefined,
+          bullName: bull || undefined,
+          dosesAvailable: doses ? Number(doses) : undefined,
+          photoCredit: photoCredit || undefined,
           photos: photoKeys.length ? photoKeys : undefined, epd,
         }),
       });
@@ -146,8 +183,8 @@ export default function Sell() {
       <main className="wrap section">
         <div className="signin-wrap">
           <div className="eyebrow">Seller Console</div>
-          <h1>Run Your Own Genetics Sale</h1>
-          <p className="muted">Sign in to build auctions, list lots with EPDs, and take them live.</p>
+          <h1>Run Your Own Sale</h1>
+          <p className="muted">Sign in to build a sale, consign lots, and take the ring live.</p>
           <button className="btn btn-primary btn-lg" style={{ marginTop: 20, maxWidth: 220 }} onClick={openSignIn}>Sign In to Sell</button>
         </div>
       </main>
@@ -222,17 +259,25 @@ export default function Sell() {
       </div>
 
       <div className="card-form">
-        <h2>New Auction</h2>
+        <h2>New Sale</h2>
+        <p className="block-note" style={{ marginTop: -10 }}>
+          Commission, yardage, and brand inspection come out of the seller&rsquo;s proceeds. The
+          buyer&rsquo;s premium sits on top of the hammer. The federal $1/head Beef Checkoff is
+          applied automatically to cattle lots.
+        </p>
         <div className="form-grid">
           <label className="field"><span className="label">Sale Name</span><input className="input" value={aName} onChange={(e) => setAName(e.target.value)} placeholder="Spring Genetics Sale" /></label>
           <label className="field"><span className="label">Starts</span><input className="input" type="datetime-local" value={aStart} onChange={(e) => setAStart(e.target.value)} /></label>
           <label className="field"><span className="label">Buyer Premium %</span><input className="input" value={premium} onChange={(e) => setPremium(e.target.value)} /></label>
+          <label className="field"><span className="label">Commission $/Head</span><input className="input" value={commission} onChange={(e) => setCommission(e.target.value)} placeholder="15.00" /></label>
+          <label className="field"><span className="label">Yardage $/Head</span><input className="input" value={yardage} onChange={(e) => setYardage(e.target.value)} placeholder="1.50" /></label>
+          <label className="field"><span className="label">Brand Inspection $/Head</span><input className="input" value={brandFee} onChange={(e) => setBrandFee(e.target.value)} placeholder="0.75" /></label>
         </div>
         <button className="btn btn-primary" onClick={createAuction} disabled={!aName}>Create Auction</button>
       </div>
 
       <div className="card-form">
-        <h2>Add Genetics Lot</h2>
+        <h2>Add Lot</h2>
         <div className="form-grid">
           <label className="field"><span className="label">Auction</span>
             <select className="input" value={lotAuction} onChange={(e) => setLotAuction(e.target.value)}>
@@ -241,6 +286,30 @@ export default function Sell() {
             </select>
           </label>
           <label className="field"><span className="label">Lot #</span><input className="input" value={lotNo} onChange={(e) => setLotNo(e.target.value)} /></label>
+          <label className="field"><span className="label">Class</span>
+            <select className="input" value={lotCategory} onChange={(e) => setLotCategory(e.target.value)}>
+              <option value="STEERS">Steers</option>
+              <option value="HEIFERS">Heifers</option>
+              <option value="CALVES">Calves</option>
+              <option value="COWS">Cows</option>
+              <option value="PAIRS">Pairs</option>
+              <option value="BRED_HEIFERS">Bred Heifers</option>
+              <option value="BULLS">Bulls</option>
+              <option value="SEMEN">Semen</option>
+              <option value="EMBRYO">Embryo</option>
+            </select>
+            <span className="dim" style={{ fontSize: 12 }}>Priced per {priceUnitFor(lotCategory).toLowerCase()}</span>
+          </label>
+          {!isGenetics && (
+            <>
+              <label className="field"><span className="label">Head Count</span><input className="input" value={headCount} onChange={(e) => setHeadCount(e.target.value)} placeholder="300" /></label>
+              <label className="field"><span className="label">Avg Weight (lb)</span><input className="input" value={avgWeight} onChange={(e) => setAvgWeight(e.target.value)} placeholder="575" /></label>
+              <label className="field"><span className="label">Pencil Shrink %</span><input className="input" value={shrink} onChange={(e) => setShrink(e.target.value)} placeholder="3" /></label>
+              <label className="field"><span className="label">Breed / Type</span><input className="input" value={breed} onChange={(e) => setBreed(e.target.value)} placeholder="Black Angus cross" /></label>
+              <label className="field"><span className="label">Origin State</span><input className="input" value={originState} onChange={(e) => setOriginState(e.target.value)} placeholder="KS" /></label>
+              <label className="field"><span className="label">Programs</span><input className="input" value={certs} onChange={(e) => setCerts(e.target.value)} placeholder="VAC-45, BQA" /></label>
+            </>
+          )}
           <label className="field"><span className="label">Bull Name</span><input className="input" value={bull} onChange={(e) => setBull(e.target.value)} /></label>
           <label className="field"><span className="label">Doses</span><input className="input" value={doses} onChange={(e) => setDoses(e.target.value)} /></label>
           <label className="field"><span className="label">Opening Bid $</span><input className="input" value={start} onChange={(e) => setStart(e.target.value)} placeholder="25.00" /></label>

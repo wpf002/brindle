@@ -5,9 +5,9 @@ export function Footer() {
         <div>
           <div className="footer-brand">Brindle<span className="dot">.</span></div>
           <p className="footer-tag">
-            An auction marketplace for cattle genetics. Breeders run their own sales,
-            buyers clear credit once and bid anywhere on Brindle, and every bid is
-            recorded in an audit trail neither side can change.
+            Auction software for the cattle business. Sale barns and breeders run their
+            own ring, live or online; buyers clear credit once and bid anywhere on
+            Brindle; and every bid lands in an audit trail neither side can change.
           </p>
         </div>
         <div className="footer-cols">

@@ -32,6 +32,11 @@ export async function consoleRoutes(app: FastifyInstance) {
       endsAt?: string;
       buyerPremiumBps?: number;
       softCloseSecs?: number;
+      // The barn's posted rates, charged out of the seller's proceeds.
+      commissionCentsPerHead?: number;
+      commissionBps?: number;
+      yardageCentsPerHead?: number;
+      brandInspectionCentsPerHead?: number;
     };
   }>("/console/auctions", { preHandler: requireAuth }, async (req, reply) => {
     const b = req.body ?? {};
@@ -56,6 +61,11 @@ export async function consoleRoutes(app: FastifyInstance) {
         endsAt: b.endsAt ? new Date(b.endsAt) : null,
         buyerPremiumBps: b.buyerPremiumBps ?? 0,
         softCloseSecs: b.softCloseSecs ?? 120,
+        commissionCentsPerHead: b.commissionCentsPerHead != null ? BigInt(b.commissionCentsPerHead) : null,
+        commissionBps: b.commissionBps ?? null,
+        yardageCentsPerHead: b.yardageCentsPerHead != null ? BigInt(b.yardageCentsPerHead) : null,
+        brandInspectionCentsPerHead:
+          b.brandInspectionCentsPerHead != null ? BigInt(b.brandInspectionCentsPerHead) : null,
       },
     });
     return { auctionId: auction.id };
@@ -75,6 +85,14 @@ export async function consoleRoutes(app: FastifyInstance) {
     Body: {
       lotNumber?: number;
       category?: LotCategory;
+      // Commercial cattle: a uniform load priced per hundredweight.
+      headCount?: number;
+      primaryBreed?: string;
+      avgWeightLbs?: number;
+      shrinkPct?: number;
+      originState?: string;
+      programCerts?: string[];
+      eidTags?: string[];
       priceUnit?: PriceUnit;
       startingBidCents?: string | number;
       bidIncrementCents?: string | number;
@@ -115,6 +133,16 @@ export async function consoleRoutes(app: FastifyInstance) {
         startingBidCents: BigInt(b.startingBidCents),
         bidIncrementCents: b.bidIncrementCents != null ? BigInt(b.bidIncrementCents) : 100n,
         reserveCents: b.reserveCents != null ? BigInt(b.reserveCents) : null,
+        headCount: b.headCount ?? null,
+        primaryBreed: b.primaryBreed ?? null,
+        avgWeightLbs: b.avgWeightLbs ?? null,
+        shrinkPct: b.shrinkPct ?? null,
+        originState: b.originState ?? null,
+        programCerts: b.programCerts ?? [],
+        // The 2024 APHIS rule requires newly applied official tags to be
+        // electronically readable; capturing them here is what lets a lot
+        // carry its own traceability instead of a paper list.
+        eidTags: b.eidTags ?? [],
         bullName: b.bullName ?? null,
         bullRegId: b.bullRegId ?? null,
         dosesAvailable: b.dosesAvailable ?? null,

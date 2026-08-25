@@ -25,16 +25,22 @@ export default function TermsPage() {
         <div className="news-body">
           <h2 className="block-title">1. What Brindle Is</h2>
           <p>
-            Brindle is a technology platform that lets livestock and genetics sellers run their own
-            auctions. Brindle is not a livestock dealer, does not take ownership of any animal or
-            genetic material listed here, and does not act as a market agency selling on commission.
-            The sale contract is between the buyer and the seller.
+            Brindle is software that auction markets, sale barns, and livestock sellers license to
+            run their own sales — in the ring, online, or both. Brindle is not a livestock dealer
+            and does not take ownership of any animal or genetic material listed here. The sale
+            contract is between the buyer and the seller.
           </p>
           <p>
-            For lots settled through Brindle&rsquo;s integrated payment flow, Brindle acts as a
-            marketplace facilitator: funds move from the buyer to the seller&rsquo;s connected
-            payment account, and Brindle collects a platform fee. Brindle does not hold seller
-            proceeds in its own accounts.
+            Where a sale is run by a market agency selling on commission, that agency &mdash; not
+            Brindle &mdash; is the party registered and bonded under the Packers and Stockyards Act.
+            It holds sale proceeds in its own custodial account for shippers&rsquo; proceeds, and it
+            is responsible for paying the seller by the next business day. Brindle does not receive,
+            hold, or disburse those proceeds, and takes no commission on them.
+          </p>
+          <p>
+            Commission, yardage, brand inspection, and the federal Beef Checkoff shown on a sale are
+            set and collected by the market agency running it. Brindle displays them; it is not a
+            party to them.
           </p>
 
           <h2 className="block-title">2. Accounts and Buyer Credit</h2>
