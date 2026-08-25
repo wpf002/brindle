@@ -16,13 +16,6 @@ interface Analytics {
   totalLots: number; soldLots: number; clearanceRateBps: number;
   gmvCents: string; realizationBps: number; buyerReach: number;
 }
-interface Profile {
-  title: string | null; bio: string | null; quote: string | null; foundedYear: number | null;
-}
-interface Operation {
-  id: string; name: string; location: string; description: string; acres: number | null; herdSize: number | null;
-}
-
 function dollarsToCents(s: string): string {
   const clean = s.trim().replace(/[$,]/g, "");
   if (!clean) return "0";
@@ -34,7 +27,6 @@ export default function Sell() {
   const [signedIn, setSignedIn] = useState(false);
   const [auctions, setAuctions] = useState<AuctionRow[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [operations, setOperations] = useState<Operation[]>([]);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -46,57 +38,18 @@ export default function Sell() {
 
   async function refresh() {
     try {
-      const [a, an, ops, prof] = await Promise.all([
+      const [a, an] = await Promise.all([
         authed<{ auctions: AuctionRow[] }>("/console/auctions"),
         authed<Analytics>("/console/analytics"),
-        authed<{ operations: Operation[] }>("/console/operations"),
-        authed<{ profile: Profile }>("/console/profile"),
       ]);
       setAuctions(a.auctions);
       setAnalytics(an);
-      setOperations(ops.operations);
-      setTitle(prof.profile.title ?? "");
-      setBio(prof.profile.bio ?? "");
-      setQuote(prof.profile.quote ?? "");
-      setFounded(prof.profile.foundedYear ? String(prof.profile.foundedYear) : "");
     } catch (e) { setMsg(humanizeError(e)); }
   }
 
   // --- profile / story ---
-  const [title, setTitle] = useState("");
-  const [bio, setBio] = useState("");
-  const [quote, setQuote] = useState("");
-  const [founded, setFounded] = useState("");
-  async function saveProfile() {
-    try {
-      await authed("/console/profile", { method: "PUT", body: JSON.stringify({
-        title: title || undefined, bio: bio || undefined, quote: quote || undefined,
-        foundedYear: founded ? Number(founded) : undefined,
-      }) });
-      setMsg("Profile saved — visible on your public seller page");
-    } catch (e) { setMsg(humanizeError(e)); }
-  }
 
   // --- operations ---
-  const [opName, setOpName] = useState("");
-  const [opLoc, setOpLoc] = useState("");
-  const [opDesc, setOpDesc] = useState("");
-  const [opAcres, setOpAcres] = useState("");
-  const [opHerd, setOpHerd] = useState("");
-  async function addOperation() {
-    try {
-      await authed("/console/operations", { method: "POST", body: JSON.stringify({
-        name: opName, location: opLoc, description: opDesc,
-        acres: opAcres ? Number(opAcres) : undefined, herdSize: opHerd ? Number(opHerd) : undefined,
-      }) });
-      setOpName(""); setOpLoc(""); setOpDesc(""); setOpAcres(""); setOpHerd("");
-      setMsg("Operation added"); await refresh();
-    } catch (e) { setMsg(humanizeError(e)); }
-  }
-  async function removeOperation(id: string) {
-    try { await authed(`/console/operations/${id}`, { method: "DELETE" }); await refresh(); }
-    catch (e) { setMsg(humanizeError(e)); }
-  }
 
   // --- auctions / lots ---
   const [aName, setAName] = useState("");
@@ -217,47 +170,6 @@ export default function Sell() {
         auctions={auctions.map((a) => ({ id: a.id, name: a.name }))}
         onImported={() => void refresh()}
       />
-
-      <div className="card-form">
-        <h2>Your Story</h2>
-        <p className="block-note" style={{ marginTop: -10 }}>Shown on your public seller page — the &ldquo;behind the brand&rdquo; profile buyers see.</p>
-        <div className="form-grid">
-          <label className="field"><span className="label">Title / Role</span><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Owner & General Manager" /></label>
-          <label className="field"><span className="label">Founded Year</span><input className="input" value={founded} onChange={(e) => setFounded(e.target.value)} placeholder="1987" /></label>
-        </div>
-        <label className="field" style={{ marginBottom: 14 }}><span className="label">Bio</span>
-          <textarea className="input" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Two or three paragraphs on the program's history and philosophy…" style={{ fontFamily: "inherit" }} />
-        </label>
-        <label className="field" style={{ marginBottom: 16 }}><span className="label">Pull-Quote</span>
-          <input className="input" value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="A short, quotable line about how you run the program." />
-        </label>
-        <button className="btn btn-primary" onClick={saveProfile}>Save Story</button>
-      </div>
-
-      <div className="card-form">
-        <h2>Operations</h2>
-        <p className="block-note" style={{ marginTop: -10 }}>Your ranch properties or divisions — shown on your profile page.</p>
-        {operations.length > 0 && (
-          <ul className="lotlist" style={{ marginBottom: 16 }}>
-            {operations.map((op) => (
-              <li key={op.id}>
-                <span><strong>{op.name}</strong> — {op.location}</span>
-                <button className="btn-link" style={{ marginLeft: "auto", color: "var(--danger)" }} onClick={() => removeOperation(op.id)}>Remove</button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="form-grid">
-          <label className="field"><span className="label">Name</span><input className="input" value={opName} onChange={(e) => setOpName(e.target.value)} placeholder="Home Place" /></label>
-          <label className="field"><span className="label">Location</span><input className="input" value={opLoc} onChange={(e) => setOpLoc(e.target.value)} placeholder="Big Timber, Montana" /></label>
-          <label className="field"><span className="label">Acres</span><input className="input" value={opAcres} onChange={(e) => setOpAcres(e.target.value)} /></label>
-          <label className="field"><span className="label">Herd Size</span><input className="input" value={opHerd} onChange={(e) => setOpHerd(e.target.value)} /></label>
-        </div>
-        <label className="field" style={{ marginBottom: 16 }}><span className="label">Description</span>
-          <input className="input" value={opDesc} onChange={(e) => setOpDesc(e.target.value)} placeholder="What happens on this property" />
-        </label>
-        <button className="btn btn-primary" onClick={addOperation} disabled={!opName || !opLoc || !opDesc}>Add Operation</button>
-      </div>
 
       <div className="card-form">
         <h2>New Sale</h2>

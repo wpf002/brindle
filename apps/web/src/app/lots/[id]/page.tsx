@@ -81,7 +81,7 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             <div className="lot-sub">
               {lot.category}
               {lot.primaryBreed ? ` · ${lot.primaryBreed}` : ""} ·{" "}
-              <Link href={`/sellers/${lot.auction.seller.id}`} className="btn-link" style={{ fontSize: "inherit" }}>{seller}</Link>
+              <span>{seller}</span>
               {lot.auction.seller.sellerVerified && <span className="pill verified" style={{ marginLeft: 6 }}>Verified</span>}
               {lot.auction.seller.state ? ` · ${lot.auction.seller.state}` : ""}
             </div>

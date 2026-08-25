@@ -93,15 +93,13 @@ export async function getMarketLatest(): Promise<{ rows: MarketRow[]; asOf: stri
   }
 }
 
-// ---------- seller directory + story pages ----------
+// ---------- consignor directory ----------
 export interface SellerSummary {
   id: string;
   businessName: string | null;
   legalName: string;
   state: string | null;
-  title: string | null;
   sellerVerified: boolean;
-  foundedYear: number | null;
 }
 
 export async function getSellers(): Promise<{ sellers: SellerSummary[] }> {
@@ -110,27 +108,6 @@ export async function getSellers(): Promise<{ sellers: SellerSummary[] }> {
   return r.json();
 }
 
-export interface SellerOperation {
-  id: string;
-  name: string;
-  location: string;
-  description: string;
-  acres: number | null;
-  herdSize: number | null;
-}
-
-export interface SellerProfile {
-  seller: SellerSummary & { bio: string | null; quote: string | null };
-  operations: SellerOperation[];
-  lots: CatalogLot[];
-  trust: { avgStars: number | null; ratingCount: number; lotsSold: number; identityVerified: boolean };
-}
-
-export async function getSeller(id: string): Promise<SellerProfile | null> {
-  const r = await fetch(`${API}/sellers/${id}`, { cache: "no-store" });
-  if (!r.ok) return null;
-  return r.json();
-}
 
 // ---------- news / editorial ----------
 export interface NewsSummary {

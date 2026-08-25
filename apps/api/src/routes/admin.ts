@@ -161,4 +161,20 @@ export async function adminRoutes(app: FastifyInstance) {
       return { id: user.id, adminRole: role };
     },
   );
+
+  // Kept from the old trust surface: the barn vets a seller off-platform and
+  // marks them verified. Peer star ratings went with the breeder-marketplace
+  // framing — the memo's trust model is the venue standing behind its
+  // participants, not buyers and sellers rating each other.
+  app.post<{ Params: { id: string } }>(
+    "/admin/users/:id/verify",
+    { preHandler: requireOperator },
+    async (req, reply) => {
+      const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+      if (!user) return reply.code(404).send({ error: "USER_NOT_FOUND" });
+      await prisma.user.update({ where: { id: user.id }, data: { sellerVerified: true } });
+      await audit(req, "seller.verify", { type: "user", id: user.id });
+      return { id: user.id, sellerVerified: true };
+    },
+  );
 }

@@ -223,15 +223,14 @@ function SellerCard({ seller }: { seller: SellerSummary }) {
   const name = seller.businessName ?? seller.legalName;
   const glyph = name.trim().charAt(0).toUpperCase();
   return (
-    <Link href={`/sellers/${seller.id}`} className="seller-card">
+    <div className="seller-card">
       <div className="seller-badge">{glyph}</div>
       <h3>{name}</h3>
       <div className="role">
-        {seller.title ?? "Seller"}{seller.state ? ` · ${seller.state}` : ""}
+        {seller.state ?? ""}
         {seller.sellerVerified && <span className="pill verified" style={{ marginLeft: 6 }}>Verified</span>}
       </div>
-      {seller.foundedYear && <div className="since">Est. {seller.foundedYear}</div>}
-    </Link>
+    </div>
   );
 }
 
