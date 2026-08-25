@@ -3,6 +3,7 @@ import { prisma } from "@brindle/db";
 import { normalizeAmsRow, type AmsRow } from "@brindle/market-data";
 import { requireOperator } from "../auth.js";
 import { queryComparables } from "../marketQuery.js";
+import { estimateForLot } from "../bidEstimate.js";
 
 export async function marketRoutes(app: FastifyInstance) {
   // Ingest AMS rows (admin/back-office). Idempotent on the natural key.
@@ -74,5 +75,17 @@ export async function marketRoutes(app: FastifyInstance) {
     return queryComparables({
       category, weightLbs: Number(weight), region, asOf, head: head != null ? Number(head) : undefined,
     });
+  });
+
+  /**
+   * What a lot should bring, per hundredweight.
+   *
+   * Returns range: null with a reason rather than a number it can't stand
+   * behind — a buyer will act on whatever this says.
+   */
+  app.get<{ Params: { lotId: string } }>("/lots/:lotId/estimate", async (req, reply) => {
+    const est = await estimateForLot(req.params.lotId);
+    if (!est) return reply.code(404).send({ error: "LOT_NOT_FOUND" });
+    return est;
   });
 }

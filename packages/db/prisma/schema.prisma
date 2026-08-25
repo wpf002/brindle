@@ -213,6 +213,8 @@ model User {
   notifications    Notification[]
   catalogImports   CatalogImport[]
   sessions         Session[]
+  buyOrders        BuyOrder[]   @relation("BuyOrderBuyer")
+  consignments     Consignment[] @relation("Consignor")
   authTokens       AuthToken[]
   auditEntries     AuditLog[]   @relation("AuditActor")
 }
@@ -314,6 +316,7 @@ model Auction {
 
   lots            Lot[]
   catalogImports  CatalogImport[]
+  consignments    Consignment[]
 
   @@index([status, startsAt])
 }
@@ -361,7 +364,12 @@ model Lot {
   endsAt           DateTime?   // per-lot close (timed sales, soft-close target)
   createdAt        DateTime    @default(now())
 
+  /// Set when the lot came out of sorting a consignment.
+  consignmentId    String?
+  consignment      Consignment? @relation(fields: [consignmentId], references: [id])
+
   bids             Bid[]
+  orderFills       BuyOrderFill[]
   contract         Contract?
   payment          Payment?
   disputes         Dispute[]
@@ -567,4 +575,104 @@ model Payment {
   stripePaymentId  String?
   status           PaymentStatus @default(PENDING)
   createdAt        DateTime      @default(now())
+}
+
+// ── Order buyers ──────────────────────────────────────────────
+// An order buyer doesn't buy for themselves — they fill a mandate for a client
+// (a feedlot needing pen space, a packer, a rancher who can't attend). They
+// work many lots across many barns against one order, so a bid button alone is
+// useless to them: they need to know what's still unfilled and what they can
+// pay without blowing the order's average.
+
+enum BuyOrderStatus {
+  OPEN
+  FILLED
+  CANCELLED
+}
+
+model BuyOrder {
+  id            String         @id @default(uuid())
+  buyerId       String
+  buyer         User           @relation("BuyOrderBuyer", fields: [buyerId], references: [id])
+
+  /// Who the cattle are for. Free text — most order buyers work on a handshake.
+  clientName    String
+  category      LotCategory
+  /// The window that satisfies the order; a lot outside it doesn't fit.
+  minWeightLbs  Int?
+  maxWeightLbs  Int?
+  targetHead    Int
+  /// Ceiling for this order, in the class's own unit (cwt or head).
+  maxPriceCents BigInt
+  region        String?
+  notes         String?
+  status        BuyOrderStatus @default(OPEN)
+  createdAt     DateTime       @default(now())
+
+  fills         BuyOrderFill[]
+
+  @@index([buyerId, status])
+}
+
+/// A lot bought against an order. Head can be partial — orders fill in pieces.
+model BuyOrderFill {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      BuyOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lotId      String
+  lot        Lot      @relation(fields: [lotId], references: [id])
+  headCount  Int
+  priceCents BigInt   // per the order's unit, as filled
+  createdAt  DateTime @default(now())
+
+  @@unique([orderId, lotId])
+  @@index([lotId])
+}
+
+// ── Consignment ───────────────────────────────────────────────
+// The seller's path onto sale day, before a Lot exists. Cattle are consigned
+// ahead of time, checked in, tagged, then sorted into uniform lots — a
+// consignment usually becomes several lots, because a straight load brings more
+// than the same cattle sold mixed.
+
+enum ConsignmentStatus {
+  SUBMITTED  // rancher told the barn what's coming
+  CHECKED_IN // arrived; seller and payment details recorded
+  TAGGED     // back tags on, brand inspection and health papers done
+  SORTED     // split into uniform lots, which now exist as Lot rows
+  WITHDRAWN
+}
+
+model Consignment {
+  id            String            @id @default(uuid())
+  auctionId     String
+  auction       Auction           @relation(fields: [auctionId], references: [id])
+  consignorId   String
+  consignor     User              @relation("Consignor", fields: [consignorId], references: [id])
+
+  headCount     Int
+  category      LotCategory
+  estWeightLbs  Int?
+  primaryBreed  String?
+  /// Weaning, vaccination programs, whether bred — what the barn pre-markets.
+  story         String?
+  programCerts  String[]
+  originState   String?
+
+  /// Recorded at check-in; a barn pays by mail and needs somewhere to send it.
+  payeeName     String?
+  payeeAddress  String?
+  /// Back tag range issued at tag-in, e.g. "4120-4184".
+  backTagRange  String?
+  brandInspected Boolean          @default(false)
+  cviOnFile     Boolean           @default(false)
+
+  status        ConsignmentStatus @default(SUBMITTED)
+  createdAt     DateTime          @default(now())
+
+  /// The uniform lots this consignment was sorted into.
+  lots          Lot[]
+
+  @@index([auctionId, status])
+  @@index([consignorId])
 }

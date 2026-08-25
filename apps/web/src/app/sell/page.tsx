@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { authed, isSignedIn, onAuthChange, openSignIn, humanizeError } from "../../lib/session";
 import { formatCents } from "../../lib/format";
 import { SellerOnboarding } from "../../components/SellerOnboarding";
+import { ConsignmentBoard } from "../../components/ConsignmentBoard";
 import { CatalogImport } from "../../components/CatalogImport";
 import { PhotoUpload } from "../../components/PhotoUpload";
 
@@ -322,8 +323,8 @@ export default function Sell() {
         <button className="btn btn-primary" onClick={addLot} disabled={!lotAuction}>Add Lot</button>
       </div>
 
-      <h2 style={{ fontSize: 22, margin: "8px 0 14px" }}>Auctions</h2>
-      {auctions.length === 0 ? <p className="dim">No auctions yet — create one above.</p> : auctions.map((a) => (
+      <h2 style={{ fontSize: 22, margin: "8px 0 14px" }}>Sales</h2>
+      {auctions.length === 0 ? <p className="dim">No sales yet — create one above.</p> : auctions.map((a) => (
         <div key={a.id} className="auction-row">
           <div className="head">
             <strong style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>{a.name}</strong>
@@ -341,6 +342,7 @@ export default function Sell() {
             ))}
             {a.lots.length === 0 && <li className="dim">No lots yet</li>}
           </ul>
+          <ConsignmentBoard auctionId={a.id} />
         </div>
       ))}
     </main>

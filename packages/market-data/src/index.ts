@@ -186,3 +186,9 @@ export {
   MARKET_DESK_AUTHOR, MARKET_DESK_TITLE, basisOf,
   type ReportRow, type MarketPostDraft, type BuildInput, type PriceBasis,
 } from "./report.js";
+
+// Lot-level bid-range estimation.
+export {
+  estimateBidRange, rangeToLotTotal,
+  type BidRange, type HammerComp, type EstimateInput, type Confidence,
+} from "./bidRange.js";

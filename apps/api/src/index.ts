@@ -20,7 +20,6 @@ import { consoleRoutes } from "./routes/console.js";
 import { marketRoutes } from "./routes/market.js";
 import { disputeRoutes } from "./routes/disputes.js";
 import { trustRoutes } from "./routes/trust.js";
-import { publicRoutes } from "./routes/public.js";
 import { sellerRoutes } from "./routes/sellers.js";
 import { newsRoutes } from "./routes/news.js";
 import { stripeConnectRoutes } from "./routes/stripeConnect.js";
@@ -33,6 +32,8 @@ import { catalogImportRoutes } from "./routes/catalogImport.js";
 import { adminRoutes } from "./routes/admin.js";
 import { bidsRoutes } from "./routes/bids.js";
 import { ringRoutes } from "./routes/ring.js";
+import { orderRoutes } from "./routes/orders.js";
+import { consignmentRoutes } from "./routes/consignment.js";
 import Redis from "ioredis";
 import { prisma } from "@brindle/db";
 import { closeExpiredLots } from "./lotCloser.js";
@@ -151,7 +152,6 @@ await app.register(consoleRoutes);
 await app.register(marketRoutes);
 await app.register(disputeRoutes);
 await app.register(trustRoutes);
-await app.register(publicRoutes);
 await app.register(sellerRoutes);
 await app.register(newsRoutes);
 await app.register(stripeConnectRoutes);
@@ -166,6 +166,8 @@ await app.register(catalogImportRoutes);
 await app.register(adminRoutes);
 await app.register(bidsRoutes);
 await app.register(ringRoutes);
+await app.register(orderRoutes);
+await app.register(consignmentRoutes);
 
 // Build the Stripe client eagerly. Every other adapter is constructed during
 // registration, so a deployment missing real keys already fails here; Stripe's

@@ -6,6 +6,7 @@ import { BidBox } from "../../../components/BidBox";
 import { EpdTable } from "../../../components/EpdTable";
 import { Comparables } from "../../../components/Comparables";
 import { WatchButton } from "../../../components/WatchButton";
+import { BidEstimate } from "../../../components/BidEstimate";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,7 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             {lot.auction.buyerPremiumBps > 0 && (<><dt>Buyer premium</dt><dd>{(lot.auction.buyerPremiumBps / 100).toFixed(1)}%</dd></>)}
           </dl>
 
+          <BidEstimate lotId={lot.id} />
           <h2 className="block-title">Expected Progeny Differences</h2>
           <p className="block-note">Bars show desirability within breed — fuller is better. Percentile is breed rank.</p>
           {lot.epd ? <EpdTable epd={lot.epd} /> : <p className="dim">No EPDs published for this lot.</p>}

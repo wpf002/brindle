@@ -39,6 +39,7 @@ export function Nav() {
           <div className="nav-user">
             {session ? (
               <>
+                <Link href="/orders" className="nav-link">Orders</Link>
                 <Link href="/watchlist" className="nav-link">Watchlist</Link>
                 <NotificationBell />
                 <span className="chip">
