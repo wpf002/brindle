@@ -27,10 +27,12 @@ const ID = {
   saleWillow: "00000000-0000-0000-0000-0000000d0a01",
   saleSundance: "00000000-0000-0000-0000-0000000d0a02",
   saleCedar: "00000000-0000-0000-0000-0000000d0a03",
+  barn: "00000000-0000-0000-0000-00000000d004",
+  saleBarn: "00000000-0000-0000-0000-0000000d0a04",
 };
 
-const SELLER_IDS = [ID.willow, ID.sundance, ID.cedar];
-const SALE_IDS = [ID.saleWillow, ID.saleSundance, ID.saleCedar];
+const SELLER_IDS = [ID.willow, ID.sundance, ID.cedar, ID.barn];
+const SALE_IDS = [ID.saleWillow, ID.saleSundance, ID.saleCedar, ID.saleBarn];
 
 /** Days from now, so a re-seed months later still shows upcoming sales. */
 function daysOut(n: number): Date {
@@ -70,10 +72,25 @@ async function seller(
   return prisma.user.upsert({ where: { id }, update: data, create: { id, ...data } });
 }
 
-async function sale(id: string, sellerId: string, name: string, startsInDays: number) {
+interface SaleOpts {
+  /** Sale barns post these; genetics sales run by a breeder generally don't. */
+  barnFees?: boolean;
+}
+
+async function sale(id: string, sellerId: string, name: string, startsInDays: number, opts: SaleOpts = {}) {
   const data = {
     sellerId,
     name,
+    // Posted rates in the range barns actually charge: $15/head commission,
+    // $1.50 yardage, $0.75 brand inspection. The $1/head Beef Checkoff is
+    // federal and applied in code, not configured per sale.
+    ...(opts.barnFees
+      ? {
+          commissionCentsPerHead: 1_500n,
+          yardageCentsPerHead: 150n,
+          brandInspectionCentsPerHead: 75n,
+        }
+      : {}),
     format: AuctionFormat.TIMED_ONLINE,
     // A demo deployment usually runs without payments; an INTEGRATED_PAYMENT
     // sale there would offer a checkout that can't complete.
@@ -90,18 +107,26 @@ async function sale(id: string, sellerId: string, name: string, startsInDays: nu
 interface LotSpec {
   lotNumber: number;
   category: LotCategory;
+  // Commercial cattle sell as uniform loads priced per hundredweight —
+  // "300 head of 550-600 lb black steers" — not per animal. This is the volume
+  // of the business; genetics lots are the smaller, higher-value tail.
+  headCount?: number;
+  avgWeightLbs?: number;
+  shrinkPct?: number;
+  originState?: string;
+  programCerts?: string[];
   priceUnit: PriceUnit;
   // Money is integer cents as bigint everywhere in this codebase; no float
   // ever touches a price.
   startingBidCents: bigint;
   bidIncrementCents: bigint;
-  bullName: string;
-  bullRegId: string;
+  bullName?: string;
+  bullRegId?: string;
   primaryBreed: string;
   dosesAvailable?: number;
   postThawMotility?: number;
   storageFacility?: string;
-  epd: Prisma.InputJsonValue;
+  epd?: Prisma.InputJsonValue;
 }
 
 async function lots(auctionId: string, specs: LotSpec[]) {
@@ -204,8 +229,46 @@ async function main(): Promise<void> {
       epd: { CED: 10, BW: { value: 1.1, pct: 30 }, WW: { value: 68, pct: 20 }, Marb: { value: 0.31, pct: 35 } } },
   ]);
 
+  // A sale barn running weekly commercial consignments — the volume channel the
+  // market research points at, where ~80% of US calves change hands.
+  const barn = await seller(
+    ID.barn, "demo-flinthills@brindle.example", "Flint Hills Livestock Market", "KS",
+    "Market Manager", 1962,
+    "A regular-selling auction market on the Kansas side of the Flint Hills, running a feeder sale every " +
+      "Tuesday and a cow sale monthly. Roughly 90,000 head cross the scales in a year, most of it " +
+      "consigned by cow-calf operations within a two-hour haul.\n\n" +
+      "Lots are sorted for uniformity before they hit the ring — weight, sex, breed type, and flesh — " +
+      "because a straight load brings more than the same cattle sold mixed.",
+    "Sort them right and the cattle sell themselves. That's most of what a barn is for.",
+  );
+  const barnSale = await sale(ID.saleBarn, barn.id, "Flint Hills Tuesday Feeder Sale", 3, { barnFees: true });
+
+  await lots(barnSale.id, [
+    { lotNumber: 1, category: LotCategory.STEERS, priceUnit: PriceUnit.CWT,
+      startingBidCents: 21_800n, bidIncrementCents: 25n, primaryBreed: "Black Angus cross",
+      headCount: 300, avgWeightLbs: 575, shrinkPct: 3, originState: "KS",
+      programCerts: ["VAC-45", "BQA"] },
+    { lotNumber: 2, category: LotCategory.HEIFERS, priceUnit: PriceUnit.CWT,
+      startingBidCents: 20_400n, bidIncrementCents: 25n, primaryBreed: "Black Angus cross",
+      headCount: 184, avgWeightLbs: 540, shrinkPct: 3, originState: "KS",
+      programCerts: ["VAC-45"] },
+    { lotNumber: 3, category: LotCategory.STEERS, priceUnit: PriceUnit.CWT,
+      startingBidCents: 19_600n, bidIncrementCents: 25n, primaryBreed: "Red Angus / Hereford",
+      headCount: 96, avgWeightLbs: 720, shrinkPct: 2, originState: "OK" },
+    { lotNumber: 4, category: LotCategory.BRED_HEIFERS, priceUnit: PriceUnit.HEAD,
+      startingBidCents: 235_000n, bidIncrementCents: 2_500n, primaryBreed: "Black Angus",
+      headCount: 42, avgWeightLbs: 1_050, originState: "KS",
+      programCerts: ["BQA"] },
+    { lotNumber: 5, category: LotCategory.PAIRS, priceUnit: PriceUnit.HEAD,
+      startingBidCents: 285_000n, bidIncrementCents: 2_500n, primaryBreed: "Angus / Simmental",
+      headCount: 28, avgWeightLbs: 1_250, originState: "KS" },
+    { lotNumber: 6, category: LotCategory.COWS, priceUnit: PriceUnit.CWT,
+      startingBidCents: 12_400n, bidIncrementCents: 25n, primaryBreed: "Mixed",
+      headCount: 61, avgWeightLbs: 1_310, shrinkPct: 2, originState: "KS" },
+  ]);
+
   const lotCount = await prisma.lot.count({ where: { auctionId: { in: SALE_IDS } } });
-  console.log(`seeded 3 sellers, 3 sales, ${lotCount} lots`);
+  console.log(`seeded 4 sellers, 4 sales, ${lotCount} lots`);
   console.log("content is illustrative — clear it before real sellers list: seed:demo -- --clear");
 }
 

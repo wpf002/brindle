@@ -25,6 +25,10 @@ export interface CatalogLot {
   bullRegId: string | null;
   primaryBreed: string | null;
   dosesAvailable: number | null;
+  headCount: number | null;
+  avgWeightLbs: string | null;   // Decimal over the wire
+  originState: string | null;
+  programCerts: string[];
   endsAt: string | null;
   photos: string[];
   auction: { id: string; name: string; startsAt: string; status: string; sellerId: string };

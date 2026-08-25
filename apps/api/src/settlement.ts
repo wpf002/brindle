@@ -21,4 +21,10 @@ export function makePaymentService(): IntegratedPaymentService {
   return new IntegratedPaymentService(gateway);
 }
 
-export const PLATFORM_FEE_BPS = Number(process.env.PLATFORM_FEE_BPS ?? 800); // 8% default
+// Zero by default: Brindle licenses software to the sale barn (Model A) rather
+// than taking a slice of cattle proceeds. A platform that skims livestock sale
+// proceeds starts to look like a market agency under the Packers and Stockyards
+// Act — bonding, custodial trust account, next-business-day payout. Only ever
+// non-zero for INTEGRATED_PAYMENT genetics lots, where Brindle is the
+// facilitator of record.
+export const PLATFORM_FEE_BPS = Number(process.env.PLATFORM_FEE_BPS ?? 0);

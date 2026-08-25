@@ -11,11 +11,16 @@ import { formatClassName } from "@brindle/market-data";
 
 export const dynamic = "force-dynamic";
 
+// Grouped the way a buyer shops rather than one chip per enum value — an order
+// buyer filling a feedlot pen wants feeders, not "STEERS" and "HEIFERS"
+// separately. Values are comma-separated category sets.
 const FILTERS: { label: string; value: string }[] = [
   { label: "All Lots", value: "" },
-  { label: "Semen", value: "SEMEN" },
-  { label: "Embryo", value: "EMBRYO" },
+  { label: "Feeders", value: "STEERS,HEIFERS,CALVES" },
+  { label: "Bred & Pairs", value: "BRED_HEIFERS,PAIRS" },
+  { label: "Cows", value: "COWS" },
   { label: "Bulls", value: "BULLS" },
+  { label: "Genetics", value: "SEMEN,EMBRYO" },
 ];
 
 export default async function Page({ searchParams }: { searchParams: { category?: string } }) {
@@ -26,7 +31,8 @@ export default async function Page({ searchParams }: { searchParams: { category?
     getMarketLatest(),
   ]);
   const active = searchParams.category ?? "";
-  const shown = active ? lots.filter((l) => l.category === active) : lots;
+  const wanted = new Set(active ? active.split(",") : []);
+  const shown = wanted.size > 0 ? lots.filter((l) => wanted.has(l.category)) : lots;
   const sellerCount = new Set(lots.map((l) => l.auction.name)).size;
   const badges = registryBadges(lots.map((l) => l.bullRegId));
 
@@ -35,15 +41,16 @@ export default async function Page({ searchParams }: { searchParams: { category?
       <section className="hero">
         <div className="wrap hero-grid">
           <div>
-            <div className="eyebrow">Livestock Genetics · Timed &amp; Live</div>
-            <h1>Bid on proven genetics, with the data to back it.</h1>
+            <div className="eyebrow">Cattle Auctions · Live Ring &amp; Timed Online</div>
+            <h1>Every lot, with the data to back it.</h1>
             <p>
-              Breeders run their own sales. Verified EPDs, side-by-side comparison, and one
-              credit approval that works across every seller on Brindle.
+              Sale barns run their own ring, online and in person. Uniform lots with weights,
+              health and vaccination programs, and verified pedigree where it exists — plus one
+              credit approval that works at every barn on Brindle.
             </p>
             <div className="hero-stats">
               <div className="stat"><div className="n tabular">{lots.length}</div><div className="l">Lots Open</div></div>
-              <div className="stat"><div className="n tabular">{sellerCount}</div><div className="l">Active Sales</div></div>
+              <div className="stat"><div className="n tabular">{sellerCount}</div><div className="l">Sales Open</div></div>
               <div className="stat"><div className="n">Cleared Once</div><div className="l">Bid Everywhere</div></div>
             </div>
           </div>
@@ -89,8 +96,8 @@ export default async function Page({ searchParams }: { searchParams: { category?
       {sellers.length > 0 && (
         <section className="wrap strip">
           <div className="strip-head">
-            <h2>Sellers on Brindle</h2>
-            <Link href="/sell">List Your Program →</Link>
+            <h2>Barns &amp; Programs on Brindle</h2>
+            <Link href="/sell">List Your Sale →</Link>
           </div>
           <div className="seller-grid">
             {sellers.map((s) => <SellerCard key={s.id} seller={s} />)}
@@ -150,6 +157,39 @@ function MarketSnapshot({ rows, asOf }: { rows: MarketRow[]; asOf: string | null
   );
 }
 
+/** Title case a LotCategory enum for display: BRED_HEIFERS -> Bred Heifers. */
+function categoryLabel(raw: string): string {
+  return raw.toLowerCase().split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/**
+ * What a lot actually is, in the terms its buyer thinks in.
+ *
+ * Commercial cattle sell as a uniform load — "300 head · 575 lb avg" is the
+ * whole description, and the animals have no individual names. Genetics lots
+ * are the opposite: one named, registered animal. The same card has to carry
+ * both without one reading as a broken version of the other.
+ */
+function lotHeadline(lot: CatalogLot): string {
+  if (lot.bullName) return lot.bullName;
+  if (lot.headCount) return `${lot.headCount} Head ${categoryLabel(lot.category)}`;
+  return categoryLabel(lot.category);
+}
+
+function lotDetail(lot: CatalogLot): string {
+  const parts: string[] = [];
+  if (lot.headCount && lot.avgWeightLbs) {
+    parts.push(`${Math.round(Number(lot.avgWeightLbs))} lb avg`);
+  }
+  if (lot.primaryBreed) parts.push(lot.primaryBreed);
+  if (lot.originState) parts.push(lot.originState);
+  if (lot.dosesAvailable) parts.push(`${lot.dosesAvailable} doses`);
+  if (!lot.headCount && !lot.dosesAvailable) parts.unshift(categoryLabel(lot.category));
+  return parts.join(" · ");
+}
+
 function LotCard({ lot }: { lot: CatalogLot }) {
   const glyph = (lot.bullName ?? lot.category).trim().charAt(0).toUpperCase();
   return (
@@ -160,12 +200,14 @@ function LotCard({ lot }: { lot: CatalogLot }) {
       </div>
       <div className="card-body">
         <div className="card-lotno">Lot {lot.lotNumber}</div>
-        <h3>{lot.bullName ?? lot.category}</h3>
-        <div className="card-meta">
-          {lot.category}
-          {lot.primaryBreed ? ` · ${lot.primaryBreed}` : ""}
-          {lot.dosesAvailable ? ` · ${lot.dosesAvailable} doses` : ""}
-        </div>
+        <h3>{lotHeadline(lot)}</h3>
+        <div className="card-meta">{lotDetail(lot)}</div>
+        {lot.programCerts.length > 0 && (
+          <div className="card-meta" style={{ marginTop: 2 }}>
+            {/* VAC-45 and BQA are price-premium drivers buyers scan for. */}
+            {lot.programCerts.join(" · ")}
+          </div>
+        )}
         <div className="card-foot">
           <div className="card-price">
             {formatCents(lot.startingBidCents)}<span className="u">{priceUnitLabel(lot.priceUnit)}</span>

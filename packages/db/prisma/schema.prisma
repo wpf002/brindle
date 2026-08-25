@@ -298,6 +298,16 @@ model Auction {
   streamUrl       String?
   status          AuctionStatus  @default(SCHEDULED)
   buyerPremiumBps Int            @default(0) // basis points (integer)
+
+  // ── sale-barn fee schedule ──
+  // Model A: the barn is the market agency and charges these out of the
+  // seller's proceeds; Brindle is software the barn licenses and takes no cut
+  // of cattle money. A platform that skims livestock proceeds starts to look
+  // like a market agency itself under the Packers and Stockyards Act.
+  commissionCentsPerHead      BigInt? // flat per head; the common posted structure
+  commissionBps               Int?    // used instead where a barn charges a percentage
+  yardageCentsPerHead         BigInt? // penning, feeding, handling
+  brandInspectionCentsPerHead BigInt? // state pass-through, brand states only
   softCloseSecs   Int            @default(120)
   termsText       String?
   createdAt       DateTime       @default(now())

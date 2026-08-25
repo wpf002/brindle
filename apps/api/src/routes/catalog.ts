@@ -31,6 +31,9 @@ export async function catalogRoutes(app: FastifyInstance) {
           id: true, lotNumber: true, category: true, priceUnit: true,
           startingBidCents: true, bullName: true, primaryBreed: true, bullRegId: true,
           dosesAvailable: true, endsAt: true, photos: true,
+          // Commercial cattle sell by the load; without these a feeder lot
+          // renders as a bare category with no idea what's in it.
+          headCount: true, avgWeightLbs: true, originState: true, programCerts: true,
           auction: { select: { id: true, name: true, startsAt: true, status: true, sellerId: true } },
         },
         orderBy: [{ auction: { startsAt: "asc" } }, { lotNumber: "asc" }],

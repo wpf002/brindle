@@ -33,13 +33,13 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Brindle — Livestock Genetics Auctions",
+    default: "Brindle — Cattle Auctions, Live and Online",
     template: "%s | Brindle",
   },
   description: DESCRIPTION,
   openGraph: {
     siteName: "Brindle",
-    title: "Brindle — Livestock Genetics Auctions",
+    title: "Brindle — Cattle Auctions, Live and Online",
     description: DESCRIPTION,
     type: "website",
   },

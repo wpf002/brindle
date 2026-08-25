@@ -34,3 +34,9 @@ export interface SettlementAdapter {
   mode: "CONTRACT" | "INTEGRATED_PAYMENT";
   settle(input: { lotId: string; fees: FeeBreakdown }): Promise<{ ref: string }>;
 }
+
+// Sale-barn fee stack (Model A: the barn is the market agency, Brindle is software).
+export {
+  computeBarnSettlement, centsPerCwt, BEEF_CHECKOFF_CENTS_PER_HEAD,
+  type BarnFeeSchedule, type BarnSettlement,
+} from "./barnFees.js";
