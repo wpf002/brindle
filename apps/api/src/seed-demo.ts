@@ -17,6 +17,8 @@ import {
 } from "@brindle/db";
 import type { Prisma } from "@brindle/db";
 import { paymentsEnabled } from "./env.js";
+import { hashPassword } from "./password.js";
+import { nextBuyerNumber } from "./buyers.js";
 
 // Fixed ids so re-running updates rather than duplicates, and so --clear knows
 // exactly what it owns. The 'd' prefix marks them as demo rows on sight.
@@ -29,9 +31,10 @@ const ID = {
   saleCedar: "00000000-0000-0000-0000-0000000d0a03",
   barn: "00000000-0000-0000-0000-00000000d004",
   saleBarn: "00000000-0000-0000-0000-0000000d0a04",
+  buyer: "00000000-0000-0000-0000-00000000d005",
 };
 
-const SELLER_IDS = [ID.willow, ID.sundance, ID.cedar, ID.barn];
+const SELLER_IDS = [ID.willow, ID.sundance, ID.cedar, ID.barn, ID.buyer];
 const SALE_IDS = [ID.saleWillow, ID.saleSundance, ID.saleCedar, ID.saleBarn];
 
 /** Days from now, so a re-seed months later still shows upcoming sales. */
@@ -50,6 +53,21 @@ async function clear(): Promise<void> {
   );
 }
 
+/**
+ * Sign-in for the demo accounts, when DEMO_PASSWORD is set.
+ *
+ * Left unset the demo users get no password hash at all and login rejects them
+ * before it ever checks one — which is the right default, since these accounts
+ * sit on a public URL. Supply a password only for a deployment you actually
+ * demo from, and pass it in the environment so it never lands in the repo:
+ *
+ *   DEMO_PASSWORD='...' pnpm --filter @brindle/api seed:demo
+ */
+async function demoPasswordHash(): Promise<string | null> {
+  const pw = process.env.DEMO_PASSWORD;
+  return pw ? hashPassword(pw) : null;
+}
+
 async function seller(
   id: string,
   email: string,
@@ -65,8 +83,9 @@ async function seller(
     legalName: businessName,
     type: UserType.SELLER_BREEDER,
     sellerVerified: true,
-    // No passwordHash, so nobody can sign in as a demo seller — login rejects
-    // any account without one before it ever checks a password.
+    // Only signable-in when DEMO_PASSWORD was supplied; otherwise no hash and
+    // login refuses before it ever checks one.
+    passwordHash: await demoPasswordHash(),
     creditStatus: CreditStatus.APPROVED,
   };
   return prisma.user.upsert({ where: { id }, update: data, create: { id, ...data } });
@@ -267,8 +286,40 @@ async function main(): Promise<void> {
       headCount: 61, avgWeightLbs: 1_310, shrinkPct: 2, originState: "KS" },
   ]);
 
+  // A buyer to demo the other side of the ring with. Credit is pre-approved and
+  // a buyer number issued, because a demo that opens on "credit pending" can't
+  // show bidding at all.
+  const issued = await prisma.user.findMany({
+    where: { buyerNumber: { not: null } }, select: { buyerNumber: true },
+  });
+  const buyerData = {
+    email: "demo-buyer@brindle.example",
+    legalName: "Sandhill Feeders",
+    businessName: "Sandhill Feeders",
+    state: "NE",
+    type: UserType.ORDER_BUYER,
+    creditStatus: CreditStatus.APPROVED,
+    creditLimitCents: 5_000_000n,
+    passwordHash: await demoPasswordHash(),
+  };
+  await prisma.user.upsert({
+    where: { id: ID.buyer },
+    update: buyerData,
+    create: {
+      id: ID.buyer, ...buyerData,
+      buyerNumber: nextBuyerNumber(
+        issued.map((u) => u.buyerNumber).filter((n): n is string => n !== null),
+      ),
+    },
+  });
+
   const lotCount = await prisma.lot.count({ where: { auctionId: { in: SALE_IDS } } });
-  console.log(`seeded 4 sellers, 4 sales, ${lotCount} lots`);
+  console.log(`seeded 4 sellers, 1 buyer, 4 sales, ${lotCount} lots`);
+  console.log(
+    process.env.DEMO_PASSWORD
+      ? "demo accounts can sign in with the password you supplied"
+      : "no DEMO_PASSWORD set — demo accounts exist but cannot be signed into",
+  );
   console.log("content is illustrative — clear it before real sellers list: seed:demo -- --clear");
 }
 
